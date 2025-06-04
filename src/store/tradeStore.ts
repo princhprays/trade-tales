@@ -12,6 +12,8 @@ interface TradeEntry {
   tags: string[]
   mood: string
   images?: string[]
+  notes?: string
+  lastSaved?: string
 }
 
 interface Settings {
@@ -27,6 +29,7 @@ interface TradeStore {
   updateEntry: (id: string, entry: Partial<TradeEntry>) => void
   deleteEntry: (id: string) => void
   updateSettings: (settings: Partial<Settings>) => void
+  clearAllData: () => void
 }
 
 export const useTradeStore = create<TradeStore>()(
@@ -58,6 +61,15 @@ export const useTradeStore = create<TradeStore>()(
       updateSettings: (newSettings) =>
         set((state) => ({
           settings: { ...state.settings, ...newSettings },
+        })),
+      clearAllData: () =>
+        set(() => ({
+          entries: [],
+          settings: {
+            currency: 'USD',
+            dateFormat: 'MM/DD/YYYY',
+            theme: 'light',
+          },
         })),
     }),
     {

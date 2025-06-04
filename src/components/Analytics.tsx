@@ -1,3 +1,4 @@
+import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import {
   LineChart,
@@ -74,119 +75,136 @@ export function Analytics() {
   }, {} as Record<string, { total: number; count: number }>)
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>PnL Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={pnlData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="pnl"
-                    stroke="#8884d8"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Analytics</h1>
+      <div className="w-full h-full flex flex-col min-h-0 min-w-0 space-y-8">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>PnL Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] flex items-center justify-center">
+                {pnlData.length === 0 ? (
+                  <span className="text-gray-400 text-center">Journal is empty, start your journey now.</span>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={pnlData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="pnl"
+                        stroke="#8884d8"
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Setup Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] flex items-center justify-center">
+                {setupData.length === 0 ? (
+                  <span className="text-gray-400 text-center">Journal is empty, start your journey now.</span>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={setupData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, percent }) =>
+                          `${name} ${(percent * 100).toFixed(0)}%`
+                        }
+                      >
+                        {setupData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Setup Distribution</CardTitle>
+            <CardTitle>Performance Metrics</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={setupData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                  >
-                    {setupData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
+            {entries.length === 0 ? (
+              <div className="h-32 flex items-center justify-center">
+                <span className="text-gray-400 text-center">Journal is empty, start your journey now.</span>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Win Rate by Setup</h3>
+                  <div className="space-y-1">
+                    {Object.entries(winRateBySetup).map(([setup, { wins, total }]) => (
+                      <div key={setup} className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">{setup}</span>
+                        <span className="text-sm font-medium">
+                          {((wins / total) * 100).toFixed(0)}%
+                        </span>
+                      </div>
                     ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Average PnL by Setup</h3>
+                  <div className="space-y-1">
+                    {Object.entries(avgPnlBySetup).map(([setup, { total, count }]) => (
+                      <div key={setup} className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">{setup}</span>
+                        <span className="text-sm font-medium">
+                          ${(total / count).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Mood Impact</h3>
+                  <div className="space-y-1">
+                    {Object.entries(moodImpact).map(([mood, { total, count }]) => (
+                      <div key={mood} className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          {mood.charAt(0).toUpperCase() + mood.slice(1)}
+                        </span>
+                        <span className="text-sm font-medium">
+                          ${(total / count).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Win Rate by Setup</h3>
-              <div className="space-y-1">
-                {Object.entries(winRateBySetup).map(([setup, { wins, total }]) => (
-                  <div key={setup} className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">{setup}</span>
-                    <span className="text-sm font-medium">
-                      {((wins / total) * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Average PnL by Setup</h3>
-              <div className="space-y-1">
-                {Object.entries(avgPnlBySetup).map(([setup, { total, count }]) => (
-                  <div key={setup} className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">{setup}</span>
-                    <span className="text-sm font-medium">
-                      ${(total / count).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Mood Impact</h3>
-              <div className="space-y-1">
-                {Object.entries(moodImpact).map(([mood, { total, count }]) => (
-                  <div key={mood} className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      {mood.charAt(0).toUpperCase() + mood.slice(1)}
-                    </span>
-                    <span className="text-sm font-medium">
-                      ${(total / count).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 } 
