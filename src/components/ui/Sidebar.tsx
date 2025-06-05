@@ -27,12 +27,12 @@ export function Sidebar({ active, onChange }: SidebarProps) {
 
   return (
     <aside
-      className={`h-full min-h-0 min-w-0 bg-white border-r transition-all duration-200 flex flex-col ${collapsed ? 'w-16' : 'w-56'} shadow-sm`}
+      className={`h-full min-h-0 min-w-0 bg-white dark:bg-gray-800 border-r dark:border-gray-700 transition-all duration-200 flex flex-col ${collapsed ? 'w-16' : 'w-56'} shadow-sm`}
     >
-      <div className="flex items-center justify-between h-16 px-4 border-b">
-        {!collapsed && <span className="font-bold text-lg">TradeTales</span>}
+      <div className="flex items-center justify-between h-16 px-4 border-b dark:border-gray-700">
+        {!collapsed && <span className="font-bold text-lg dark:text-white">TradeTales</span>}
         <button
-          className="p-2 rounded hover:bg-gray-100"
+          className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300"
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -43,8 +43,8 @@ export function Sidebar({ active, onChange }: SidebarProps) {
         {navItems.map((item) => (
           <button
             key={item.value}
-            className={`flex items-center gap-3 w-full px-4 py-2 my-1 rounded transition-colors text-gray-700 hover:bg-gray-100 ${
-              active === item.value ? 'bg-gray-100 font-semibold' : ''
+            className={`flex items-center gap-3 w-full px-4 py-2 my-1 rounded transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              active === item.value ? 'bg-gray-100 dark:bg-gray-700 font-semibold' : ''
             } ${collapsed ? 'justify-center px-2' : ''}`}
             onClick={() => onChange(item.value)}
           >

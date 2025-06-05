@@ -16,28 +16,54 @@ const COLORS = {
     secondary: '#F9FAFB',
     hover: '#F3F4F6',
     today: '#EFF6FF',
-    selected: '#DBEAFE'
+    selected: '#DBEAFE',
+    dark: {
+      primary: '#1F2937',
+      secondary: '#111827',
+      hover: '#374151',
+      today: '#1E40AF',
+      selected: '#1E3A8A'
+    }
   },
   text: {
     primary: '#111827',
     secondary: '#6B7280',
-    muted: '#9CA3AF'
+    muted: '#9CA3AF',
+    dark: {
+      primary: '#F9FAFB',
+      secondary: '#E5E7EB',
+      muted: '#9CA3AF'
+    }
   },
   trade: {
     profit: {
       light: '#D1FAE5',
       medium: '#10B981',
-      dark: '#059669'
+      dark: '#059669',
+      darkMode: {
+        light: '#064E3B',
+        medium: '#059669',
+        dark: '#047857'
+      }
     },
     loss: {
       light: '#FEE2E2',
       medium: '#EF4444',
-      dark: '#DC2626'
+      dark: '#DC2626',
+      darkMode: {
+        light: '#7F1D1D',
+        medium: '#DC2626',
+        dark: '#B91C1C'
+      }
     }
   },
   border: {
     light: '#E5E7EB',
-    medium: '#D1D5DB'
+    medium: '#D1D5DB',
+    dark: {
+      light: '#374151',
+      medium: '#4B5563'
+    }
   }
 }
 
@@ -172,6 +198,8 @@ export function Calendar() {
   }
 
   const handleAddNewTrade = () => {
+    if (!selectedDate) return
+    
     // Reset form for new trade while keeping the same date
     setFormData({
       lessons: '',
@@ -201,47 +229,27 @@ export function Calendar() {
         })
       }
 
-      try {
-        const imagePreviews = await Promise.all(
-          validFiles.map(async (file) => {
-            return new Promise<{ name: string; preview: string; data: string }>((resolve) => {
-              const reader = new FileReader()
-              reader.onloadend = () => {
-                const base64String = reader.result as string
-                resolve({
-                  name: file.name,
-                  preview: base64String,
-                  data: base64String
-                })
-              }
-              reader.onerror = () => {
-                toast({
-                  title: 'Error',
-                  description: `Failed to read file: ${file.name}`,
-                  variant: 'destructive'
-                })
-              }
-              reader.readAsDataURL(file)
-            })
+      // Process valid files
+      const processedFiles = await Promise.all(
+        validFiles.map(async (file) => {
+          return new Promise<{ name: string; preview: string; data: string }>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+              resolve({
+                name: file.name,
+                preview: URL.createObjectURL(file),
+                data: reader.result as string
+              })
+            }
+            reader.readAsDataURL(file)
           })
-        )
-
-        setFormData(prev => ({
-          ...prev,
-          images: [...(prev.images || []), ...imagePreviews]
-        }))
-
-        toast({
-          title: 'Success',
-          description: `Added ${validFiles.length} image${validFiles.length > 1 ? 's' : ''}`,
         })
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to process images',
-          variant: 'destructive'
-        })
-      }
+      )
+
+      setFormData(prev => ({
+        ...prev,
+        images: [...(prev.images || []), ...processedFiles]
+      }))
     }
   }
 
@@ -261,7 +269,7 @@ export function Calendar() {
     }
     
     if (formData.pnl === '' || isNaN(Number(formData.pnl))) {
-      newErrors.pnl = 'Valid P&L amount is required'
+      newErrors.pnl = 'Valid P&L is required'
     }
     
     if (formData.lessons.length > 500) {
@@ -278,16 +286,24 @@ export function Calendar() {
 
   // Enhanced save handler with validation and loading state
   const handleSaveEntry = async () => {
-    if (!validateForm()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fix the errors in the form',
-        variant: 'destructive'
-      })
+    setIsSaving(true)
+    setErrors({})
+
+    // Validate form
+    const newErrors: FormErrors = {}
+    if (!formData.setup.trim()) {
+      newErrors.setup = 'Setup is required'
+    }
+    if (formData.pnl === '' || isNaN(Number(formData.pnl))) {
+      newErrors.pnl = 'Valid P&L is required'
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      setIsSaving(false)
       return
     }
 
-    setIsSaving(true)
     try {
       if (selectedDate) {
         // Convert images to the format expected by the store
@@ -417,60 +433,60 @@ export function Calendar() {
   }
 
   return (
-    <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen">
+    <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-[95vw] xs:max-w-[90vw] sm:max-w-[85vw] md:max-w-7xl mx-auto">
         {/* Monthly Summary */}
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6">
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="hover:shadow-md transition-shadow dark:bg-gray-800">
             <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500">Month P&L</CardTitle>
+              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">Month P&L</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-xl xs:text-2xl sm:text-3xl font-bold ${monthPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={`text-xl xs:text-2xl sm:text-3xl font-bold ${monthPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {monthPnl >= 0 ? '+' : ''}{monthPnl.toFixed(2)}%
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="hover:shadow-md transition-shadow dark:bg-gray-800">
             <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500">Month Trades</CardTitle>
+              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">Month Trades</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">{monthTradeCount}</div>
-              <div className="text-xs xs:text-sm text-gray-500 mt-1">
+              <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{monthTradeCount}</div>
+              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {monthWinCount} wins / {monthTradeCount - monthWinCount} losses
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="hover:shadow-md transition-shadow dark:bg-gray-800">
             <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500">Month Win Rate</CardTitle>
+              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">Month Win Rate</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">{monthWinRate.toFixed(1)}%</div>
-              <div className="text-xs xs:text-sm text-gray-500 mt-1">
+              <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{monthWinRate.toFixed(1)}%</div>
+              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Risk/Reward: {riskRewardRatio}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="hover:shadow-md transition-shadow dark:bg-gray-800">
             <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500">Best/Worst Trade</CardTitle>
+              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">Best/Worst Trade</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-1 xs:space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs xs:text-sm text-gray-500">Best:</span>
-                  <span className="text-base xs:text-lg font-bold text-green-600">
+                  <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Best:</span>
+                  <span className="text-base xs:text-lg font-bold text-green-600 dark:text-green-400">
                     {bestTrade ? `${bestTrade.pnl >= 0 ? '+' : ''}${bestTrade.pnl.toFixed(2)}%` : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs xs:text-sm text-gray-500">Worst:</span>
-                  <span className="text-base xs:text-lg font-bold text-red-600">
+                  <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Worst:</span>
+                  <span className="text-base xs:text-lg font-bold text-red-600 dark:text-red-400">
                     {worstTrade ? `${worstTrade.pnl >= 0 ? '+' : ''}${worstTrade.pnl.toFixed(2)}%` : '-'}
                   </span>
                 </div>
@@ -479,28 +495,28 @@ export function Calendar() {
           </Card>
         </div>
 
-        <Card className="bg-white shadow-sm">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-1 xs:pb-2">
             <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 xs:gap-4">
-              <CardTitle className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">
+              <CardTitle className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {format(currentDate, 'MMMM yyyy')}
               </CardTitle>
               <div className="flex items-center gap-1 xs:gap-2">
                 <button
                   onClick={handlePrevMonth}
-                  className="p-1.5 xs:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 xs:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   ←
                 </button>
                 <button
                   onClick={() => setCurrentDate(today)}
-                  className="px-2 xs:px-3 py-1 text-xs xs:text-sm sm:text-base text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-2 xs:px-3 py-1 text-xs xs:text-sm sm:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   Today
                 </button>
                 <button
                   onClick={handleNextMonth}
-                  className="p-1.5 xs:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 xs:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   →
                 </button>
@@ -508,11 +524,11 @@ export function Calendar() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+            <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
               {WEEKDAYS.map(day => (
                 <div
                   key={day}
-                  className="bg-gray-50 p-1 xs:p-2 text-center text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500"
+                  className="bg-gray-50 dark:bg-gray-800 p-1 xs:p-2 text-center text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400"
                 >
                   {day}
                 </div>
@@ -524,45 +540,62 @@ export function Calendar() {
                 const isCurrentDay = isToday(day)
                 const hasEntries = dayEntries.length > 0
 
+                // Calculate day statistics
+                const dayWinCount = dayEntries.filter(e => e.outcome === 'win').length
+                const dayLossCount = dayEntries.filter(e => e.outcome === 'loss').length
+                const dayTotalPnL = dayEntries.reduce((sum, entry) => sum + entry.pnl, 0)
+                const dayTotalWon = dayEntries
+                  .filter(e => e.outcome === 'win')
+                  .reduce((sum, entry) => sum + entry.pnl, 0)
+                const dayTotalLost = Math.abs(dayEntries
+                  .filter(e => e.outcome === 'loss')
+                  .reduce((sum, entry) => sum + entry.pnl, 0))
+
                 return (
                   <div
                     key={i}
                     onClick={() => handleDateClick(dateStr)}
                     className={`
                       relative min-h-[60px] xs:min-h-[70px] sm:min-h-[80px] md:min-h-[100px] p-0.5 xs:p-1 sm:p-2
-                      ${isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
-                      ${isCurrentDay ? 'bg-blue-50' : ''}
-                      hover:bg-gray-50 cursor-pointer transition-colors
+                      ${isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}
+                      ${isCurrentDay ? 'bg-blue-50 dark:bg-blue-900/30' : ''}
+                      hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors
+                      group
                     `}
                   >
                     <div className="flex items-center justify-between mb-0.5 xs:mb-1">
                       <span className={`
                         text-[10px] xs:text-xs sm:text-sm font-medium
-                        ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
-                        ${isCurrentDay ? 'text-blue-600' : ''}
+                        ${isCurrentMonth ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}
+                        ${isCurrentDay ? 'text-blue-600 dark:text-blue-400' : ''}
+                        group-hover:text-lg xs:group-hover:text-xl sm:group-hover:text-2xl
+                        group-hover:font-bold
+                        transition-all duration-200
                       `}>
                         {format(day, 'd')}
                       </span>
-                      {hasEntries && (
-                        <span className="text-[8px] xs:text-xs text-gray-500">
-                          {dayEntries.length} trade{dayEntries.length > 1 ? 's' : ''}
-                        </span>
-                      )}
                     </div>
-                    {dayEntries.map((entry, index) => (
-                      <div
-                        key={index}
-                        className={`
-                          text-[8px] xs:text-xs p-0.5 xs:p-1 rounded mb-0.5 xs:mb-1 truncate
-                          ${entry.outcome === 'win' 
-                            ? 'bg-green-50 text-green-700' 
-                            : 'bg-red-50 text-red-700'
-                          }
-                        `}
-                      >
-                        {entry.setup || 'Trade'}
+                    {hasEntries && (
+                      <div className="space-y-0.5 xs:space-y-1">
+                        <div className={`
+                          text-[8px] xs:text-xs sm:text-sm font-medium
+                          ${dayTotalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}
+                          group-hover:text-sm xs:group-hover:text-base sm:group-hover:text-lg
+                          transition-all duration-200
+                        `}>
+                          Total: {dayTotalPnL >= 0 ? '+' : ''}{dayTotalPnL.toFixed(2)}%
+                        </div>
+                        <div className="text-[8px] xs:text-xs sm:text-sm text-green-600 dark:text-green-400 group-hover:text-sm xs:group-hover:text-base sm:group-hover:text-lg transition-all duration-200">
+                          Win: +{dayTotalWon.toFixed(2)}%
+                        </div>
+                        <div className="text-[8px] xs:text-xs sm:text-sm text-red-600 dark:text-red-400 group-hover:text-sm xs:group-hover:text-base sm:group-hover:text-lg transition-all duration-200">
+                          Lost: -{dayTotalLost.toFixed(2)}%
+                        </div>
+                        <div className="text-[8px] xs:text-xs sm:text-sm text-gray-600 dark:text-gray-300 group-hover:text-sm xs:group-hover:text-base sm:group-hover:text-lg transition-all duration-200">
+                          Trades: {dayEntries.length}
+                        </div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )
               })}
@@ -571,55 +604,80 @@ export function Calendar() {
         </Card>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="w-[95vw] xs:w-[90vw] sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px]">
+          <DialogContent className="w-[95vw] xs:w-[90vw] sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px] dark:bg-gray-800">
             <DialogHeader>
-              <DialogTitle className="text-base xs:text-lg sm:text-xl font-semibold">
-                {selectedDate ? format(new Date(selectedDate), 'MMMM d, yyyy') : ''}
-              </DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-base xs:text-lg sm:text-xl font-semibold dark:text-white">
+                  {selectedDate ? format(new Date(selectedDate), 'MMMM d, yyyy') : ''}
+                </DialogTitle>
+                <div className="flex items-center gap-2">
+                  {isEditing && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleTradeSelect(Math.max(0, selectedTradeIndex - 1))}
+                        disabled={selectedTradeIndex === 0}
+                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        ←
+                      </button>
+                      <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
+                        Trade {selectedTradeIndex + 1} of {entries.filter(entry => entry.date === selectedDate).length}
+                      </span>
+                      <button
+                        onClick={() => handleTradeSelect(Math.min(entries.filter(entry => entry.date === selectedDate).length - 1, selectedTradeIndex + 1))}
+                        disabled={selectedTradeIndex === entries.filter(entry => entry.date === selectedDate).length - 1}
+                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </DialogHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 xs:gap-4">
               <div className="space-y-3 xs:space-y-4">
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Setup
                   </label>
                   <input
                     type="text"
                     value={formData.setup}
                     onChange={(e) => setFormData({ ...formData, setup: e.target.value })}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter trade setup"
                   />
                   {errors.setup && (
-                    <p className="mt-1 text-xs xs:text-sm text-red-600">{errors.setup}</p>
+                    <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.setup}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     P&L (%)
                   </label>
                   <input
                     type="number"
                     value={formData.pnl}
                     onChange={(e) => handlePnLChange(e.target.value)}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter P&L percentage"
                   />
                   {errors.pnl && (
-                    <p className="mt-1 text-xs xs:text-sm text-red-600">{errors.pnl}</p>
+                    <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.pnl}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Outcome
                   </label>
                   <select
                     value={formData.outcome}
                     onChange={(e) => setFormData({ ...formData, outcome: e.target.value as 'win' | 'loss' })}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                   >
                     <option value="win">Win</option>
                     <option value="loss">Loss</option>
@@ -627,13 +685,13 @@ export function Calendar() {
                 </div>
 
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Mood
                   </label>
                   <select
                     value={formData.mood}
                     onChange={(e) => setFormData({ ...formData, mood: e.target.value })}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                   >
                     <option value="great">Great</option>
                     <option value="good">Good</option>
@@ -646,40 +704,40 @@ export function Calendar() {
 
               <div className="space-y-3 xs:space-y-4">
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Lessons Learned
-                    <span className="text-[10px] xs:text-xs text-gray-500 ml-1">
+                    <span className="text-[10px] xs:text-xs text-gray-500 dark:text-gray-400 ml-1">
                       ({charCount.lessons}/500)
                     </span>
                   </label>
                   <textarea
                     value={formData.lessons}
                     onChange={(e) => handleTextChange('lessons', e.target.value)}
-                    className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
                     placeholder="What did you learn from this trade?"
                   />
                   {errors.lessons && (
-                    <p className="mt-1 text-xs xs:text-sm text-red-600">{errors.lessons}</p>
+                    <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.lessons}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Notes
-                    <span className="text-[10px] xs:text-xs text-gray-500 ml-1">
+                    <span className="text-[10px] xs:text-xs text-gray-500 dark:text-gray-400 ml-1">
                       ({charCount.notes}/1000)
                     </span>
                   </label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => handleTextChange('notes', e.target.value)}
-                    className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
                     placeholder="Additional notes about the trade"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Trade Images
                   </label>
                   <div className="grid grid-cols-2 xs:grid-cols-3 gap-1 xs:gap-2">
@@ -688,18 +746,21 @@ export function Calendar() {
                         <img
                           src={image.preview}
                           alt={image.name}
-                          className="w-full h-16 xs:h-20 sm:h-24 object-cover rounded-lg cursor-pointer"
+                          className="w-full h-16 xs:h-20 sm:h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => handleImageClick(image)}
                         />
                         <button
-                          onClick={() => handleRemoveImage(index)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveImage(index);
+                          }}
                           className="absolute top-0.5 xs:top-1 right-0.5 xs:right-1 p-0.5 xs:p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
                         >
                           ×
                         </button>
                       </div>
                     ))}
-                    <label className="flex items-center justify-center h-16 xs:h-20 sm:h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors">
+                    <label className="flex items-center justify-center h-16 xs:h-20 sm:h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
                       <input
                         type="file"
                         accept="image/*"
@@ -707,7 +768,7 @@ export function Calendar() {
                         onChange={handleFileChange}
                         className="hidden"
                       />
-                      <span className="text-xs xs:text-sm text-gray-500">Add Images</span>
+                      <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Add Images</span>
                     </label>
                   </div>
                 </div>
@@ -715,25 +776,35 @@ export function Calendar() {
             </div>
 
             <DialogFooter className="flex flex-col xs:flex-row gap-2 xs:gap-4">
-              {isEditing && (
-                <button
-                  onClick={handleDeleteEntry}
-                  className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
-                >
-                  Delete Trade
-                </button>
-              )}
+              <div className="flex gap-2 w-full xs:w-auto">
+                {isEditing && (
+                  <button
+                    onClick={handleDeleteEntry}
+                    className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
+                  >
+                    Delete Trade
+                  </button>
+                )}
+                {isEditing && (
+                  <button
+                    onClick={handleAddNewTrade}
+                    className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
+                  >
+                    New Trade
+                  </button>
+                )}
+              </div>
               <div className="flex gap-2 w-full xs:w-auto">
                 <button
                   onClick={() => setIsDialogOpen(false)}
-                  className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                  className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEntry}
                   disabled={isSaving}
-                  className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSaving ? (
                     <>
@@ -746,6 +817,21 @@ export function Calendar() {
                 </button>
               </div>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Image Preview Dialog */}
+        <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+          <DialogContent className="w-[95vw] xs:w-[90vw] sm:max-w-[600px] md:max-w-[800px] lg:max-w-[1000px] p-0 dark:bg-gray-800">
+            {selectedImage && (
+              <div className="relative">
+                <img
+                  src={selectedImage.preview}
+                  alt={selectedImage.name}
+                  className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+                />
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

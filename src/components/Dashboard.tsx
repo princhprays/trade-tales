@@ -51,65 +51,65 @@ export function Dashboard() {
   ]
 
   return (
-    <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen">
+    <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-[95vw] xs:max-w-[90vw] sm:max-w-[85vw] md:max-w-7xl mx-auto">
         <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 xs:gap-4 mb-4 xs:mb-6 sm:mb-8">
-          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">Trading Analytics</h1>
-          <div className="text-[10px] xs:text-xs sm:text-sm text-gray-500">
+          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Trading Analytics</h1>
+          <div className="text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             Last updated: {format(new Date(), 'MMM d, yyyy h:mm a')}
           </div>
         </div>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6 sm:mb-8">
-          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
             <CardContent className="p-3 xs:p-4 sm:p-6">
               <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Total PnL</h3>
-                <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Total PnL</h3>
+                <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                   {totalPnL >= 0 ? '↑' : '↓'} {Math.abs(totalPnL).toFixed(2)}%
                 </span>
               </div>
-              <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} dark:text-white`}>
                 ${totalPnL.toFixed(2)}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-3 xs:p-4 sm:p-6">
               <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Win Rate</h3>
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Win Rate</h3>
                 <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Last 30d</span>
               </div>
-              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{winRate.toFixed(1)}%</div>
-              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{winRate.toFixed(1)}%</div>
+              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 {winCount} wins / {entries.length} trades
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-3 xs:p-4 sm:p-6">
               <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Current Streak</h3>
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Current Streak</h3>
                 <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Active</span>
               </div>
-              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{currentStreak}</div>
-              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{currentStreak}</div>
+              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 {currentStreak > 0 ? 'Winning streak' : 'No active streak'}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-3 xs:p-4 sm:p-6">
               <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Best Trade</h3>
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Best Trade</h3>
                 <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-green-500">All time</span>
               </div>
-              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-green-600">${bestTrade.pnl.toFixed(2)}</div>
-              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-green-600 dark:text-white">${bestTrade.pnl.toFixed(2)}</div>
+              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 {bestTrade.setup || 'No setup recorded'}
               </div>
             </CardContent>
@@ -118,13 +118,13 @@ export function Dashboard() {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6 sm:mb-8">
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm">
             <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900">Daily P&L</CardTitle>
+              <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Daily P&L</CardTitle>
             </CardHeader>
             <CardContent className="h-[250px] xs:h-[300px] sm:h-[400px]">
               {entries.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-500 text-xs xs:text-sm sm:text-base">
+                <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs xs:text-sm sm:text-base">
                   No trading data available
                 </div>
               ) : (
@@ -165,13 +165,13 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white shadow-sm">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm">
             <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900">Win/Loss Distribution</CardTitle>
+              <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Win/Loss Distribution</CardTitle>
             </CardHeader>
             <CardContent className="h-[250px] xs:h-[300px] sm:h-[400px]">
               {entries.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-500 text-xs xs:text-sm sm:text-base">
+                <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs xs:text-sm sm:text-base">
                   No trading data available
                 </div>
               ) : (
@@ -212,9 +212,9 @@ export function Dashboard() {
         </div>
 
         {/* Performance Metrics */}
-        <Card className="bg-white shadow-sm">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
           <CardHeader className="pb-1 xs:pb-2">
-            <CardTitle className="text-base xs:text-lg font-semibold text-gray-900">Performance Metrics</CardTitle>
+            <CardTitle className="text-base xs:text-lg font-semibold text-gray-900 dark:text-white">Performance Metrics</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="weekly" className="w-full">
@@ -304,24 +304,24 @@ function PerformanceMetrics({ entries, period }: { entries: any[]; period: 'week
 
   return (
     <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-2 xs:gap-3 sm:gap-4">
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
         <CardContent className="p-3 xs:p-4">
           <div className="flex items-center justify-between mb-1 xs:mb-2">
-            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Total P&L</h3>
-            <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Total P&L</h3>
+            <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
               {totalPnL >= 0 ? '↑' : '↓'} {Math.abs(totalPnL).toFixed(2)}%
             </span>
           </div>
-          <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} dark:text-white`}>
             ${totalPnL.toFixed(2)}
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
         <CardContent className="p-3 xs:p-4">
           <div className="flex items-center justify-between mb-1 xs:mb-2">
-            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Win Rate</h3>
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Win Rate</h3>
             <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Period</span>
           </div>
           <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{winRate.toFixed(1)}%</div>
@@ -331,10 +331,10 @@ function PerformanceMetrics({ entries, period }: { entries: any[]; period: 'week
         </CardContent>
       </Card>
 
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
         <CardContent className="p-3 xs:p-4">
           <div className="flex items-center justify-between mb-1 xs:mb-2">
-            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Risk/Reward</h3>
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Risk/Reward</h3>
             <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Ratio</span>
           </div>
           <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{rr.toFixed(2)}</div>
@@ -344,10 +344,10 @@ function PerformanceMetrics({ entries, period }: { entries: any[]; period: 'week
         </CardContent>
       </Card>
 
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
         <CardContent className="p-3 xs:p-4">
           <div className="flex items-center justify-between mb-1 xs:mb-2">
-            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Best Trade</h3>
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Best Trade</h3>
             <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-green-500">Period</span>
           </div>
           <div className="text-lg xs:text-xl sm:text-2xl font-bold text-green-600">${bestTrade.pnl.toFixed(2)}</div>
@@ -357,10 +357,10 @@ function PerformanceMetrics({ entries, period }: { entries: any[]; period: 'week
         </CardContent>
       </Card>
 
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
         <CardContent className="p-3 xs:p-4">
           <div className="flex items-center justify-between mb-1 xs:mb-2">
-            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Worst Trade</h3>
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Worst Trade</h3>
             <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-red-500">Period</span>
           </div>
           <div className="text-lg xs:text-xl sm:text-2xl font-bold text-red-600">${worstTrade.pnl.toFixed(2)}</div>
@@ -370,13 +370,13 @@ function PerformanceMetrics({ entries, period }: { entries: any[]; period: 'week
         </CardContent>
       </Card>
 
-      <Card className="bg-white shadow-sm">
+      <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
         <CardContent className="p-3 xs:p-4">
           <div className="flex items-center justify-between mb-1 xs:mb-2">
-            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Avg Trade</h3>
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Avg Trade</h3>
             <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Period</span>
           </div>
-          <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${avgPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${avgPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             ${avgPnL.toFixed(2)}
           </div>
           <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">

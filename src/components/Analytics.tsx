@@ -262,63 +262,44 @@ export function Analytics() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Summary Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm sm:text-base font-medium text-gray-500">Total P&L</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className={`text-2xl sm:text-3xl font-bold ${summaryMetrics.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {summaryMetrics.totalPnL >= 0 ? '+' : ''}{summaryMetrics.totalPnL.toFixed(2)}%
-                </div>
-                <div className={`flex items-center text-sm ${summaryMetrics.pnlChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {summaryMetrics.pnlChange >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
-                  {Math.abs(summaryMetrics.pnlChange).toFixed(1)}%
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trading Analytics</h1>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm sm:text-base font-medium text-gray-500">Win Rate</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">{summaryMetrics.winRate.toFixed(1)}%</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm sm:text-base font-medium text-gray-500">Total Trades</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">{summaryMetrics.totalTrades}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm sm:text-base font-medium text-gray-500">Avg Trade</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl sm:text-3xl font-bold ${summaryMetrics.avgTrade >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {summaryMetrics.avgTrade >= 0 ? '+' : ''}{summaryMetrics.avgTrade.toFixed(2)}%
-              </div>
-            </CardContent>
-          </Card>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Total Trades</h3>
+            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{summaryMetrics.totalTrades}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Win Rate</h3>
+            <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+              {summaryMetrics.winRate.toFixed(1)}%
+            </p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Total P&L</h3>
+            <div className={`text-3xl font-bold ${summaryMetrics.totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {summaryMetrics.totalPnL >= 0 ? '+' : ''}
+              {summaryMetrics.totalPnL.toFixed(2)}%
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Avg Trade</h3>
+            <div className={`text-3xl font-bold ${summaryMetrics.avgTrade >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {summaryMetrics.avgTrade >= 0 ? '+' : ''}
+              {summaryMetrics.avgTrade.toFixed(2)}%
+            </div>
+          </div>
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* P&L Trend */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">P&L Trend</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">P&L Trend</CardTitle>
             </CardHeader>
             <CardContent className="h-[300px] sm:h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -358,7 +339,7 @@ export function Analytics() {
           {/* Win Rate Trend */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">Win Rate Trend</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Win Rate Trend</CardTitle>
             </CardHeader>
             <CardContent className="h-[300px] sm:h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -401,7 +382,7 @@ export function Analytics() {
           {/* Setup Performance */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">Setup Performance</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Setup Performance</CardTitle>
             </CardHeader>
             <CardContent className="h-[300px] sm:h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -437,7 +418,7 @@ export function Analytics() {
           {/* Tag Performance */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">Tag Performance</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Tag Performance</CardTitle>
             </CardHeader>
             <CardContent className="h-[300px] sm:h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -474,7 +455,7 @@ export function Analytics() {
         {/* Mood Impact */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">Mood Impact</CardTitle>
+            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Mood Impact</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px] sm:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
