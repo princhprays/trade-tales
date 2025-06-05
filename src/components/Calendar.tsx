@@ -1,10 +1,45 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog'
-import { useTradeStore } from '../store/tradeStore'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { useTradeStore } from '@/store/tradeStore'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay } from 'date-fns'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useToast } from '@/components/ui/use-toast'
+import { Loader2 } from 'lucide-react'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Professional color scheme
+const COLORS = {
+  background: {
+    primary: '#FFFFFF',
+    secondary: '#F9FAFB',
+    hover: '#F3F4F6',
+    today: '#EFF6FF',
+    selected: '#DBEAFE'
+  },
+  text: {
+    primary: '#111827',
+    secondary: '#6B7280',
+    muted: '#9CA3AF'
+  },
+  trade: {
+    profit: {
+      light: '#D1FAE5',
+      medium: '#10B981',
+      dark: '#059669'
+    },
+    loss: {
+      light: '#FEE2E2',
+      medium: '#EF4444',
+      dark: '#DC2626'
+    }
+  },
+  border: {
+    light: '#E5E7EB',
+    medium: '#D1D5DB'
+  }
+}
 
 interface TradeEntryForm {
   lessons: string
@@ -20,6 +55,14 @@ interface TradeEntryForm {
     data: string
   }>
   lastSaved?: string
+}
+
+// Add form validation interface
+interface FormErrors {
+  setup?: string
+  pnl?: string
+  lessons?: string
+  tags?: string
 }
 
 export function Calendar() {
@@ -40,8 +83,13 @@ export function Calendar() {
   const [currentDate, setCurrentDate] = useState(today)
   const [selectedTradeIndex, setSelectedTradeIndex] = useState<number>(0)
   const [previewImage, setPreviewImage] = useState<null | { preview: string; name: string }>(null)
+  const [selectedImage, setSelectedImage] = useState<{ preview: string; name: string } | null>(null)
 
-  const { entries, addEntry, deleteEntry, updateEntry } = useTradeStore()
+  const { entries, addEntry, deleteEntry, updateEntry, settings } = useTradeStore()
+  const { toast } = useToast()
+  const [isSaving, setIsSaving] = useState(false)
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [charCount, setCharCount] = useState({ lessons: 0, notes: 0 })
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -66,20 +114,21 @@ export function Calendar() {
     const dayEntries = entries.filter(entry => entry.date === date)
     if (dayEntries.length > 0) {
       setSelectedTradeIndex(0) // Start with the first trade
+      const entry = dayEntries[0]
       setFormData({
-        lessons: dayEntries[0].lessons || '',
-        setup: dayEntries[0].setup || '',
-        pnl: dayEntries[0].pnl || 0,
-        outcome: dayEntries[0].outcome || 'win',
-        tags: dayEntries[0].tags || [],
-        mood: dayEntries[0].mood || 'neutral',
-        notes: dayEntries[0].notes || '',
-        images: dayEntries[0].images?.map(img => ({
-          name: img,
+        lessons: entry.lessons || '',
+        setup: entry.setup || '',
+        pnl: entry.pnl || 0,
+        outcome: entry.outcome || 'win',
+        tags: entry.tags || [],
+        mood: entry.mood || 'neutral',
+        notes: entry.notes || '',
+        images: entry.images?.map(img => ({
+          name: 'Trade Image',
           preview: img,
           data: img
         })) || [],
-        lastSaved: dayEntries[0].lastSaved || new Date().toISOString(),
+        lastSaved: entry.lastSaved || new Date().toISOString(),
       })
       setIsEditing(true)
     } else {
@@ -102,21 +151,22 @@ export function Calendar() {
     if (!selectedDate) return
     const dayEntries = entries.filter(entry => entry.date === selectedDate)
     if (dayEntries[index]) {
+      const entry = dayEntries[index]
       setSelectedTradeIndex(index)
       setFormData({
-        lessons: dayEntries[index].lessons || '',
-        setup: dayEntries[index].setup || '',
-        pnl: dayEntries[index].pnl || 0,
-        outcome: dayEntries[index].outcome || 'win',
-        tags: dayEntries[index].tags || [],
-        mood: dayEntries[index].mood || 'neutral',
-        notes: dayEntries[index].notes || '',
-        images: dayEntries[index].images?.map(img => ({
-          name: img,
+        lessons: entry.lessons || '',
+        setup: entry.setup || '',
+        pnl: entry.pnl || 0,
+        outcome: entry.outcome || 'win',
+        tags: entry.tags || [],
+        mood: entry.mood || 'neutral',
+        notes: entry.notes || '',
+        images: entry.images?.map(img => ({
+          name: 'Trade Image',
           preview: img,
           data: img
         })) || [],
-        lastSaved: dayEntries[index].lastSaved || new Date().toISOString(),
+        lastSaved: entry.lastSaved || new Date().toISOString(),
       })
     }
   }
@@ -139,26 +189,59 @@ export function Calendar() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files)
-      const imagePreviews = await Promise.all(
-        files.map(async (file) => {
-          return new Promise<{ name: string; preview: string; data: string }>((resolve) => {
-            const reader = new FileReader()
-            reader.onloadend = () => {
-              const base64String = reader.result as string
-              resolve({
-                name: file.name,
-                preview: base64String,
-                data: base64String
-              })
-            }
-            reader.readAsDataURL(file)
-          })
+      
+      // Validate file size (5MB limit)
+      const validFiles = files.filter(file => file.size <= 5 * 1024 * 1024)
+      
+      if (validFiles.length !== files.length) {
+        toast({
+          title: 'File too large',
+          description: 'Some files were skipped because they exceed 5MB limit',
+          variant: 'destructive'
         })
-      )
-      setFormData(prev => ({
-        ...prev,
-        images: [...(prev.images || []), ...imagePreviews]
-      }))
+      }
+
+      try {
+        const imagePreviews = await Promise.all(
+          validFiles.map(async (file) => {
+            return new Promise<{ name: string; preview: string; data: string }>((resolve) => {
+              const reader = new FileReader()
+              reader.onloadend = () => {
+                const base64String = reader.result as string
+                resolve({
+                  name: file.name,
+                  preview: base64String,
+                  data: base64String
+                })
+              }
+              reader.onerror = () => {
+                toast({
+                  title: 'Error',
+                  description: `Failed to read file: ${file.name}`,
+                  variant: 'destructive'
+                })
+              }
+              reader.readAsDataURL(file)
+            })
+          })
+        )
+
+        setFormData(prev => ({
+          ...prev,
+          images: [...(prev.images || []), ...imagePreviews]
+        }))
+
+        toast({
+          title: 'Success',
+          description: `Added ${validFiles.length} image${validFiles.length > 1 ? 's' : ''}`,
+        })
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to process images',
+          variant: 'destructive'
+        })
+      }
     }
   }
 
@@ -169,41 +252,111 @@ export function Calendar() {
     }))
   }
 
-  const handleSaveEntry = () => {
-    if (selectedDate) {
-      const entryData = {
-        date: selectedDate,
-        ...formData,
-        pnl: Number(formData.pnl),
-        lastSaved: new Date().toISOString(),
-        images: formData.images?.map(img => img.data) || []
-      }
-
-      if (isEditing) {
-        // Find the existing entry and update it
-        const dayEntries = entries.filter(entry => entry.date === selectedDate)
-        if (dayEntries[selectedTradeIndex]) {
-          updateEntry(dayEntries[selectedTradeIndex].id, entryData)
-        }
-      } else {
-        // Add new entry
-        addEntry(entryData)
-      }
-
-      setIsDialogOpen(false)
-      setFormData({
-        lessons: '',
-        setup: '',
-        pnl: 0,
-        outcome: 'win',
-        tags: [],
-        mood: 'neutral',
-        notes: '',
-        images: [],
-      })
-      setIsEditing(false)
-      setSelectedTradeIndex(0)
+  // Add validation function
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
+    
+    if (!formData.setup.trim()) {
+      newErrors.setup = 'Setup is required'
     }
+    
+    if (formData.pnl === '' || isNaN(Number(formData.pnl))) {
+      newErrors.pnl = 'Valid P&L amount is required'
+    }
+    
+    if (formData.lessons.length > 500) {
+      newErrors.lessons = 'Lessons must be less than 500 characters'
+    }
+    
+    if (formData.tags.some(tag => tag.length > 20)) {
+      newErrors.tags = 'Tags must be less than 20 characters each'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // Enhanced save handler with validation and loading state
+  const handleSaveEntry = async () => {
+    if (!validateForm()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fix the errors in the form',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      if (selectedDate) {
+        // Convert images to the format expected by the store
+        const images = formData.images?.map(img => img.data) || []
+
+        const entryData = {
+          date: selectedDate,
+          lessons: formData.lessons,
+          setup: formData.setup,
+          pnl: Number(formData.pnl),
+          outcome: formData.outcome,
+          tags: formData.tags,
+          mood: formData.mood,
+          notes: formData.notes || '',
+          images: images,
+          lastSaved: new Date().toISOString()
+        }
+
+        if (isEditing) {
+          const dayEntries = entries.filter(entry => entry.date === selectedDate)
+          if (dayEntries[selectedTradeIndex]) {
+            updateEntry(dayEntries[selectedTradeIndex].id, entryData)
+          }
+        } else {
+          addEntry(entryData)
+        }
+
+        toast({
+          title: isEditing ? 'Trade Updated' : 'Trade Added',
+          description: `Successfully ${isEditing ? 'updated' : 'added'} trade entry`,
+        })
+
+        setIsDialogOpen(false)
+        setFormData({
+          lessons: '',
+          setup: '',
+          pnl: 0,
+          outcome: 'win',
+          tags: [],
+          mood: 'neutral',
+          notes: '',
+          images: [],
+        })
+        setIsEditing(false)
+        setSelectedTradeIndex(0)
+      }
+    } catch (error) {
+      console.error('Error saving entry:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to save trade entry',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Update character count
+  const handleTextChange = (field: 'lessons' | 'notes', value: string) => {
+    setCharCount(prev => ({ ...prev, [field]: value.length }))
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Format P&L input
+  const handlePnLChange = (value: string) => {
+    // Remove any non-numeric characters except decimal point
+    const numericValue = value.replace(/[^0-9.-]/g, '')
+    setFormData(prev => ({ ...prev, pnl: numericValue }))
   }
 
   const handleDeleteEntry = () => {
@@ -258,426 +411,344 @@ export function Calendar() {
     current.pnl < worst.pnl ? current : worst
   ) : null
 
+  // Add this new function
+  const handleImageClick = (image: { preview: string; name: string }) => {
+    setSelectedImage(image)
+  }
+
   return (
-    <div className="w-full h-full flex min-h-0 min-w-0">
-      {/* Calendar Card */}
-      <Card className="bg-white text-black border-gray-200 shadow-md flex-1 mr-8">
-        <CardHeader>
-          <CardTitle>Trade Calendar</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-1">
-              <button onClick={handlePrevMonth} className="p-2 text-lg hover:bg-gray-100">&#8592;</button>
-              <button onClick={handleNextMonth} className="p-2 text-lg hover:bg-gray-100">&#8594;</button>
+    <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen">
+      <div className="max-w-[95vw] xs:max-w-[90vw] sm:max-w-[85vw] md:max-w-7xl mx-auto">
+        {/* Monthly Summary */}
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-1 xs:pb-2">
+              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500">Month P&L</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-xl xs:text-2xl sm:text-3xl font-bold ${monthPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {monthPnl >= 0 ? '+' : ''}{monthPnl.toFixed(2)}%
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-1 xs:pb-2">
+              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500">Month Trades</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">{monthTradeCount}</div>
+              <div className="text-xs xs:text-sm text-gray-500 mt-1">
+                {monthWinCount} wins / {monthTradeCount - monthWinCount} losses
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-1 xs:pb-2">
+              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500">Month Win Rate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">{monthWinRate.toFixed(1)}%</div>
+              <div className="text-xs xs:text-sm text-gray-500 mt-1">
+                Risk/Reward: {riskRewardRatio}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-1 xs:pb-2">
+              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500">Best/Worst Trade</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1 xs:space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs xs:text-sm text-gray-500">Best:</span>
+                  <span className="text-base xs:text-lg font-bold text-green-600">
+                    {bestTrade ? `${bestTrade.pnl >= 0 ? '+' : ''}${bestTrade.pnl.toFixed(2)}%` : '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs xs:text-sm text-gray-500">Worst:</span>
+                  <span className="text-base xs:text-lg font-bold text-red-600">
+                    {worstTrade ? `${worstTrade.pnl >= 0 ? '+' : ''}${worstTrade.pnl.toFixed(2)}%` : '-'}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="bg-white shadow-sm">
+          <CardHeader className="pb-1 xs:pb-2">
+            <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 xs:gap-4">
+              <CardTitle className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">
+                {format(currentDate, 'MMMM yyyy')}
+              </CardTitle>
+              <div className="flex items-center gap-1 xs:gap-2">
+                <button
+                  onClick={handlePrevMonth}
+                  className="p-1.5 xs:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  ←
+                </button>
+                <button
+                  onClick={() => setCurrentDate(today)}
+                  className="px-2 xs:px-3 py-1 text-xs xs:text-sm sm:text-base text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={handleNextMonth}
+                  className="p-1.5 xs:p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  →
+                </button>
+              </div>
             </div>
-            <span className="font-semibold text-lg">{format(currentDate, 'MMMM yyyy')}</span>
-            <div className="w-[88px]"></div>
-          </div>
-          
-          <div className="w-full">
-            {/* Weekday headers */}
-            <div className="grid grid-cols-7 border-b">
-              {WEEKDAYS.map((day) => (
-                <div key={day} className="text-center py-3 text-base font-medium text-gray-500">
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+              {WEEKDAYS.map(day => (
+                <div
+                  key={day}
+                  className="bg-gray-50 p-1 xs:p-2 text-center text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500"
+                >
                   {day}
                 </div>
               ))}
-            </div>
-            
-            {/* Calendar grid */}
-            <div className="grid grid-cols-7 border-x border-b">
-              {calendarDays.map((day: Date, i: number) => {
-                const dateString = format(day, 'yyyy-MM-dd')
-                const dayEntries = entries.filter((entry) => entry.date === dateString)
-                const dayPnl = dayEntries.reduce((sum, entry) => sum + entry.pnl, 0)
-                const tradeCount = dayEntries.length
+              {calendarDays.map((day, i) => {
+                const dateStr = format(day, 'yyyy-MM-dd')
+                const dayEntries = entries.filter(entry => entry.date === dateStr)
                 const isCurrentMonth = isSameMonth(day, currentDate)
-                // Calculate win/loss count for the day
-                const winCount = dayEntries.filter(e => e.outcome === 'win').length
-                const lossCount = dayEntries.filter(e => e.outcome === 'loss').length
-                let dayColor = 'text-gray-600'
-                if (tradeCount > 0) {
-                  if (lossCount > winCount) {
-                    dayColor = 'text-red-600'
-                  } else if (winCount > lossCount) {
-                    dayColor = 'text-green-600'
-                  }
-                }
-                // Professional terms and calculations
-                const totalVolume = dayEntries.reduce((sum, entry) => sum + Math.abs(Number(entry.pnl)), 0)
-                const totalEarned = dayEntries.filter(e => e.outcome === 'win').reduce((sum, e) => sum + Math.abs(Number(e.pnl)), 0)
-                const totalLost = dayEntries.filter(e => e.outcome === 'loss').reduce((sum, e) => sum + Math.abs(Number(e.pnl)), 0)
-                
+                const isCurrentDay = isToday(day)
+                const hasEntries = dayEntries.length > 0
+
                 return (
                   <div
                     key={i}
-                    onClick={() => isCurrentMonth && handleDateClick(dateString)}
+                    onClick={() => handleDateClick(dateStr)}
                     className={`
-                      min-h-[120px] border-r border-b p-2
-                      ${isCurrentMonth ? 'cursor-pointer hover:bg-gray-50' : 'bg-gray-50'}
-                      ${isToday(day) ? 'bg-blue-50' : ''}
+                      relative min-h-[60px] xs:min-h-[70px] sm:min-h-[80px] md:min-h-[100px] p-0.5 xs:p-1 sm:p-2
+                      ${isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
+                      ${isCurrentDay ? 'bg-blue-50' : ''}
+                      hover:bg-gray-50 cursor-pointer transition-colors
                     `}
                   >
-                    <div className="text-base text-gray-500 mb-2">{format(day, 'd')}</div>
-                    {isCurrentMonth && tradeCount > 0 && (
-                      <div className="space-y-1">
-                        <div className="text-xs text-gray-500">Total Volume: {totalVolume.toFixed(2)}</div>
-                        <div className="text-sm font-bold">
-                          <span className="text-green-600">Earned: +{totalEarned.toFixed(2)}</span>
-                          {" | "}
-                          <span className="text-red-600">Lost: {totalLost.toFixed(2)}</span>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {tradeCount} trade{tradeCount > 1 ? 's' : ''}
-                        </div>
+                    <div className="flex items-center justify-between mb-0.5 xs:mb-1">
+                      <span className={`
+                        text-[10px] xs:text-xs sm:text-sm font-medium
+                        ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
+                        ${isCurrentDay ? 'text-blue-600' : ''}
+                      `}>
+                        {format(day, 'd')}
+                      </span>
+                      {hasEntries && (
+                        <span className="text-[8px] xs:text-xs text-gray-500">
+                          {dayEntries.length} trade{dayEntries.length > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    {dayEntries.map((entry, index) => (
+                      <div
+                        key={index}
+                        className={`
+                          text-[8px] xs:text-xs p-0.5 xs:p-1 rounded mb-0.5 xs:mb-1 truncate
+                          ${entry.outcome === 'win' 
+                            ? 'bg-green-50 text-green-700' 
+                            : 'bg-red-50 text-red-700'
+                          }
+                        `}
+                      >
+                        {entry.setup || 'Trade'}
                       </div>
-                    )}
+                    ))}
                   </div>
                 )
               })}
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="w-[280px] space-y-8">
-        {/* Monthly Summary Card */}
-        <Card className="bg-white text-black border-gray-200 shadow-md">
-          <CardHeader>
-            <CardTitle>Monthly Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Total PnL */}
-              <div className="space-y-1">
-                <div className="text-sm text-gray-500">Total PnL</div>
-                <div className={`text-2xl font-bold ${monthPnl > 0 ? 'text-green-600' : monthPnl < 0 ? 'text-red-600' : 'text-gray-700'}`}>
-                  {monthPnl > 0 ? '+' : ''}{monthPnl.toFixed(2)}
-                </div>
-              </div>
-              {/* Win Rate */}
-              <div className="space-y-1">
-                <div className="text-sm text-gray-500">Win Rate</div>
-                <div className="text-2xl font-bold">{monthWinRate.toFixed(1)}%</div>
-              </div>
-              {/* Total Trades */}
-              <div className="space-y-1">
-                <div className="text-sm text-gray-500">Total Trades</div>
-                <div className="text-2xl font-bold">{monthTradeCount}</div>
-              </div>
-              {/* Average PnL */}
-              <div className="space-y-1">
-                <div className="text-sm text-gray-500">Avg PnL</div>
-                <div className={`text-2xl font-bold ${monthTradeCount > 0 ? (monthPnl / monthTradeCount > 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-700'}`}>
-                  {monthTradeCount > 0 ? (monthPnl / monthTradeCount).toFixed(2) : '0.00'}
-                </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
-        {/* Additional Metrics Card */}
-        <Card className="bg-white border-gray-200 shadow-sm">
-          <CardHeader>
-            <CardTitle>Trade Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Risk/Reward Ratio */}
-              <div className="space-y-1">
-                <div className="text-sm text-gray-500">Risk/Reward Ratio</div>
-                <div className="text-xl font-bold">{riskRewardRatio}</div>
-                <div className="text-xs text-gray-500">
-                  Avg Win: {avgWin.toFixed(2)} | Avg Loss: {avgLoss.toFixed(2)}
-                </div>
-              </div>
-              {/* Best Trade */}
-              <div className="space-y-1">
-                <div className="text-sm text-gray-500">Best Trade</div>
-                <div className="text-xl font-bold text-green-600">
-                  {bestTrade ? '+' + bestTrade.pnl.toFixed(2) : '0.00'}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {bestTrade ? format(new Date(bestTrade.date), 'MMM d, yyyy') : '-'}
-                </div>
-              </div>
-              {/* Worst Trade */}
-              <div className="space-y-1">
-                <div className="text-sm text-gray-500">Worst Trade</div>
-                <div className="text-xl font-bold text-red-600">
-                  {worstTrade ? worstTrade.pnl.toFixed(2) : '0.00'}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {worstTrade ? format(new Date(worstTrade.date), 'MMM d, yyyy') : '-'}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="w-[95vw] xs:w-[90vw] sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px]">
+            <DialogHeader>
+              <DialogTitle className="text-base xs:text-lg sm:text-xl font-semibold">
+                {selectedDate ? format(new Date(selectedDate), 'MMMM d, yyyy') : ''}
+              </DialogTitle>
+            </DialogHeader>
 
-      <Dialog
-        open={isDialogOpen}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            if (previewImage) {
-              setPreviewImage(null); // Close the image preview first
-            } else {
-              setIsDialogOpen(false); // Then close the modal
-            }
-          } else {
-            setIsDialogOpen(true);
-          }
-        }}
-      >
-        <DialogContent className="max-w-xl w-full max-h-[90vh] p-0 rounded-2xl shadow-2xl border bg-white flex flex-col">
-          {/* Header */}
-          <div className="px-6 py-4 border-b">
-            <DialogTitle className="text-xl font-semibold text-gray-900">
-              {isEditing ? 'Edit Trade Entry' : 'New Trade Entry'}
-            </DialogTitle>
-            <div className="text-xs text-gray-500 mt-1">
-              {selectedDate && format(new Date(selectedDate), 'MMMM d, yyyy')}
-            </div>
-            {selectedDate && entries.filter(e => e.date === selectedDate).length > 0 && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs text-gray-400">
-                  Trade {selectedTradeIndex + 1} of {entries.filter(e => e.date === selectedDate).length}
-                </span>
-                <div className="flex gap-1">
-                  {entries
-                    .filter(e => e.date === selectedDate)
-                    .map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleTradeSelect(index)}
-                        className={`w-2 h-2 rounded-full transition-all duration-200 border ${
-                          index === selectedTradeIndex 
-                            ? 'bg-blue-600 border-blue-600' 
-                            : 'bg-gray-300 border-gray-300 hover:bg-gray-400'
-                        }`}
-                      />
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Content */}
-          <div className="overflow-y-auto px-6 py-4 flex-1">
-            {/* Trade Details */}
-            <div className="mb-6">
-              <h3 className="text-base font-semibold text-gray-800 mb-4">Trade Details</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Setup</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 xs:gap-4">
+              <div className="space-y-3 xs:space-y-4">
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                    Setup
+                  </label>
                   <input
                     type="text"
-                    placeholder="Enter trade setup"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     value={formData.setup}
                     onChange={(e) => setFormData({ ...formData, setup: e.target.value })}
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter trade setup"
                   />
+                  {errors.setup && (
+                    <p className="mt-1 text-xs xs:text-sm text-red-600">{errors.setup}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">PnL</label>
+
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                    P&L (%)
+                  </label>
                   <input
                     type="number"
-                    placeholder="0.00"
-                    className={`w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 ${formData.outcome === 'loss' ? 'text-red-600' : formData.outcome === 'win' ? 'text-green-600' : ''}`}
                     value={formData.pnl}
-                    onChange={(e) => {
-                      let val = e.target.value;
-                      if (val === '') {
-                        setFormData({ ...formData, pnl: '' });
-                        return;
-                      }
-                      if (/^-?\d*\.?\d*$/.test(val)) {
-                        setFormData({ ...formData, pnl: val });
-                      }
-                    }}
+                    onChange={(e) => handlePnLChange(e.target.value)}
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter P&L percentage"
                   />
+                  {errors.pnl && (
+                    <p className="mt-1 text-xs xs:text-sm text-red-600">{errors.pnl}</p>
+                  )}
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Outcome</label>
+
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                    Outcome
+                  </label>
                   <select
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     value={formData.outcome}
                     onChange={(e) => setFormData({ ...formData, outcome: e.target.value as 'win' | 'loss' })}
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="win">Win</option>
                     <option value="loss">Loss</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Mood</label>
+
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                    Mood
+                  </label>
                   <select
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     value={formData.mood}
                     onChange={(e) => setFormData({ ...formData, mood: e.target.value })}
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="confident">Confident</option>
+                    <option value="great">Great</option>
+                    <option value="good">Good</option>
                     <option value="neutral">Neutral</option>
-                    <option value="anxious">Anxious</option>
+                    <option value="bad">Bad</option>
+                    <option value="terrible">Terrible</option>
                   </select>
                 </div>
               </div>
-            </div>
 
-            {/* Analysis */}
-            <div className="mb-6">
-              <h3 className="text-base font-semibold text-gray-800 mb-4">Analysis</h3>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Lessons Learned</label>
-                <textarea
-                  placeholder="What did you learn from this trade?"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 min-h-[80px]"
-                  value={formData.lessons}
-                  onChange={(e) => setFormData({ ...formData, lessons: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2 mt-4">
-                <label className="text-sm font-medium text-gray-700">Tags</label>
-                <input
-                  type="text"
-                  placeholder="Enter tags separated by commas"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                  value={formData.tags.join(', ')}
-                  onChange={e => setFormData({ ...formData, tags: e.target.value.split(',').map(tag => tag.trim()) })}
-                />
-              </div>
-            </div>
-
-            {/* Additional Notes */}
-            <div className="mb-6">
-              <h3 className="text-base font-semibold text-gray-800 mb-4">Additional Notes</h3>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Notes</label>
-                <textarea
-                  placeholder="Any additional notes about the trade..."
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 min-h-[80px]"
-                  value={formData.notes}
-                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Screenshots & Charts */}
-            <div className="mb-2">
-              <h3 className="text-base font-semibold text-gray-800 mb-4">Screenshots & Charts</h3>
-              <label className="text-sm font-medium text-gray-700">Upload Files</label>
-              <div className="relative mt-2">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  className="hidden"
-                  id="file-upload"
-                  onChange={handleFileChange}
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="inline-block px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-                >
-                  Choose files
-                </label>
-              </div>
-              {formData.images && formData.images.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                  {formData.images.map((image, index) => (
-                    <div key={index} className="relative group">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewImage(image)}
-                        className="block cursor-zoom-in w-full h-full"
-                        tabIndex={0}
-                        aria-label={`Preview ${image.name}`}
-                      >
-                        <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center transition-shadow hover:shadow-lg">
-                          <img
-                            src={image.preview}
-                            alt={image.name}
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.onerror = null;
-                              target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBsb2FkIGVycm9yPC90ZXh0Pjwvc3ZnPg==';
-                            }}
-                          />
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => handleRemoveImage(index)}
-                        className="absolute top-2 right-2 p-1.5 bg-white text-gray-600 rounded-full shadow hover:bg-red-500 hover:text-white opacity-80 group-hover:opacity-100 transition"
-                        aria-label="Remove image"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 20 20" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 6l8 8M6 14L14 6" /></svg>
-                      </button>
-                      <div className="mt-2 text-xs text-gray-600 truncate px-1">
-                        {image.name}
-                      </div>
-                    </div>
-                  ))}
+              <div className="space-y-3 xs:space-y-4">
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                    Lessons Learned
+                    <span className="text-[10px] xs:text-xs text-gray-500 ml-1">
+                      ({charCount.lessons}/500)
+                    </span>
+                  </label>
+                  <textarea
+                    value={formData.lessons}
+                    onChange={(e) => handleTextChange('lessons', e.target.value)}
+                    className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    placeholder="What did you learn from this trade?"
+                  />
+                  {errors.lessons && (
+                    <p className="mt-1 text-xs xs:text-sm text-red-600">{errors.lessons}</p>
+                  )}
                 </div>
-              )}
+
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                    Notes
+                    <span className="text-[10px] xs:text-xs text-gray-500 ml-1">
+                      ({charCount.notes}/1000)
+                    </span>
+                  </label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => handleTextChange('notes', e.target.value)}
+                    className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    placeholder="Additional notes about the trade"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 mb-1">
+                    Trade Images
+                  </label>
+                  <div className="grid grid-cols-2 xs:grid-cols-3 gap-1 xs:gap-2">
+                    {formData.images?.map((image, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={image.preview}
+                          alt={image.name}
+                          className="w-full h-16 xs:h-20 sm:h-24 object-cover rounded-lg cursor-pointer"
+                          onClick={() => handleImageClick(image)}
+                        />
+                        <button
+                          onClick={() => handleRemoveImage(index)}
+                          className="absolute top-0.5 xs:top-1 right-0.5 xs:right-1 p-0.5 xs:p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <label className="flex items-center justify-center h-16 xs:h-20 sm:h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <span className="text-xs xs:text-sm text-gray-500">Add Images</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Footer */}
-          <DialogFooter className="flex flex-row gap-2 px-6 py-4 border-t bg-gray-50">
-            {isEditing && (
-              <button
-                className="rounded-md border border-red-600 text-red-600 px-4 py-2 font-semibold hover:bg-red-50 transition"
-                onClick={handleDeleteEntry}
-              >
-                Delete Entry
-              </button>
-            )}
-            {isEditing && (
-              <button
-                className="rounded-md border border-gray-400 text-gray-700 px-4 py-2 font-semibold hover:bg-gray-100 transition"
-                onClick={handleAddNewTrade}
-              >
-                Add Another Trade
-              </button>
-            )}
-            <button
-              className={`ml-auto rounded-md px-4 py-2 font-semibold text-white shadow-sm focus:outline-none focus:ring-2 transition ${
-                isEditing 
-                  ? 'bg-blue-600 hover:bg-blue-500 focus:ring-blue-500/20' 
-                  : 'bg-green-600 hover:bg-green-500 focus:ring-green-500/20'
-              }`}
-              onClick={handleSaveEntry}
-            >
-              {isEditing ? 'Update Trade' : 'Add Trade'}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Lightbox Modal for Image Preview (now outside Dialog) */}
-      {previewImage && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 animate-fade-in">
-          <div className="relative max-w-2xl w-full mx-4">
-            <button
-              className="absolute top-2 right-2 p-2 rounded-full bg-white text-gray-700 shadow hover:bg-red-500 hover:text-white transition"
-              onClick={() => setPreviewImage(null)}
-              aria-label="Close preview"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-            <img
-              src={previewImage.preview}
-              alt={previewImage.name}
-              className="w-full max-h-[80vh] object-contain rounded-lg bg-white"
-            />
-            <div className="mt-2 text-center text-xs text-white">{previewImage.name}</div>
-          </div>
-        </div>
-      )}
+            <DialogFooter className="flex flex-col xs:flex-row gap-2 xs:gap-4">
+              {isEditing && (
+                <button
+                  onClick={handleDeleteEntry}
+                  className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                >
+                  Delete Trade
+                </button>
+              )}
+              <div className="flex gap-2 w-full xs:w-auto">
+                <button
+                  onClick={() => setIsDialogOpen(false)}
+                  className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEntry}
+                  disabled={isSaving}
+                  className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-3 h-3 xs:w-4 xs:h-4 mr-1 xs:mr-2 animate-spin inline" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Trade'
+                  )}
+                </button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   )
 } 

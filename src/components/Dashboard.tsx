@@ -2,8 +2,16 @@ import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useTradeStore } from '../store/tradeStore'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval, parseISO } from 'date-fns'
 
-const WINLOSS_COLORS = ['#22c55e', '#ef4444'] // green, red
+const WINLOSS_COLORS = ['#10B981', '#EF4444'] // Modern green and red
+const CHART_COLORS = {
+  primary: '#3B82F6', // Modern blue
+  grid: '#E5E7EB',
+  text: '#6B7280',
+  tooltip: '#1F2937'
+}
 
 export function Dashboard() {
   const { entries } = useTradeStore()
@@ -42,124 +50,340 @@ export function Dashboard() {
     { name: 'Loss', value: entries.length - winCount }
   ]
 
-  // Calculate PnL trend data (for future use)
-  const pnlData = entries.reduce((acc, entry) => {
-    const month = entry.date.substring(0, 7) // YYYY-MM
-    const existingMonth = acc.find((item) => item.date === month)
-    if (existingMonth) {
-      existingMonth.pnl += entry.pnl
-    } else {
-      acc.push({ date: month, pnl: entry.pnl })
-    }
-    return acc
-  }, [] as { date: string; pnl: number }[]).sort((a, b) => a.date.localeCompare(b.date))
-
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Top summary row */}
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total PnL</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${totalPnL > 0 ? 'text-green-400' : totalPnL < 0 ? 'text-red-400' : ''}`}>${totalPnL.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{winRate.toFixed(1)}%</div>
-          </CardContent>
-        </Card>
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Trades</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{entries.length}</div>
-          </CardContent>
-        </Card>
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{currentStreak}</div>
-          </CardContent>
-        </Card>
+    <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen">
+      <div className="max-w-[95vw] xs:max-w-[90vw] sm:max-w-[85vw] md:max-w-7xl mx-auto">
+        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 xs:gap-4 mb-4 xs:mb-6 sm:mb-8">
+          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">Trading Analytics</h1>
+          <div className="text-[10px] xs:text-xs sm:text-sm text-gray-500">
+            Last updated: {format(new Date(), 'MMM d, yyyy h:mm a')}
+          </div>
+        </div>
 
-        {/* Middle row: 2 main panels */}
-        <Card className="w-full h-64 flex flex-col">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Daily P&L</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex items-center justify-center">
-            {entries.length === 0 ? (
-              <span className="text-gray-400 text-center">Journal is empty, start your journey now.</span>
-            ) : entries.length < 2 ? (
-              <span className="text-gray-400 text-center">Not enough data collected, make more journeys and learn from your mistakes.</span>
-            ) : (
-              <ResponsiveContainer width="100%" height="90%">
-                <LineChart data={dailyPnlData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="pnl" stroke="#38bdf8" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="w-full h-64 flex flex-col">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Win/Loss Ratio</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex items-center justify-center">
-            {entries.length === 0 ? (
-              <span className="text-gray-400 text-center">Journal is empty, start your journey now.</span>
-            ) : entries.length < 2 ? (
-              <span className="text-gray-400 text-center">Not enough data collected, make more journeys and learn from your mistakes.</span>
-            ) : (
-              <ResponsiveContainer width="100%" height="90%">
-                <PieChart>
-                  <Pie
-                    data={winLossData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={60}
-                    fill="#8884d8"
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {winLossData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={WINLOSS_COLORS[index % WINLOSS_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
+        {/* Key Metrics */}
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6 sm:mb-8">
+          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-3 xs:p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-1 xs:mb-2">
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Total PnL</h3>
+                <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {totalPnL >= 0 ? '↑' : '↓'} {Math.abs(totalPnL).toFixed(2)}%
+                </span>
+              </div>
+              <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ${totalPnL.toFixed(2)}
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Bottom row: Monthly Performance */}
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Performance</CardTitle>
+          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-3 xs:p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-1 xs:mb-2">
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Win Rate</h3>
+                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Last 30d</span>
+              </div>
+              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{winRate.toFixed(1)}%</div>
+              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+                {winCount} wins / {entries.length} trades
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-3 xs:p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-1 xs:mb-2">
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Current Streak</h3>
+                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Active</span>
+              </div>
+              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{currentStreak}</div>
+              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+                {currentStreak > 0 ? 'Winning streak' : 'No active streak'}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-3 xs:p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-1 xs:mb-2">
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Best Trade</h3>
+                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-green-500">All time</span>
+              </div>
+              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-green-600">${bestTrade.pnl.toFixed(2)}</div>
+              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+                {bestTrade.setup || 'No setup recorded'}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6 sm:mb-8">
+          <Card className="bg-white shadow-sm">
+            <CardHeader className="pb-1 xs:pb-2">
+              <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900">Daily P&L</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[250px] xs:h-[300px] sm:h-[400px]">
+              {entries.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-gray-500 text-xs xs:text-sm sm:text-base">
+                  No trading data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dailyPnlData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fill: CHART_COLORS.text, fontSize: 10 }}
+                      tickFormatter={(value) => format(parseISO(value), 'MMM d')}
+                    />
+                    <YAxis 
+                      tick={{ fill: CHART_COLORS.text, fontSize: 10 }}
+                      tickFormatter={(value) => `$${value}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: CHART_COLORS.tooltip,
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: 'white',
+                        fontSize: '12px'
+                      }}
+                      formatter={(value: number) => [`$${value.toFixed(2)}`, 'P&L']}
+                      labelFormatter={(label) => format(parseISO(label), 'MMM d, yyyy')}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="pnl" 
+                      stroke={CHART_COLORS.primary} 
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4, fill: CHART_COLORS.primary }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm">
+            <CardHeader className="pb-1 xs:pb-2">
+              <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900">Win/Loss Distribution</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[250px] xs:h-[300px] sm:h-[400px]">
+              {entries.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-gray-500 text-xs xs:text-sm sm:text-base">
+                  No trading data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={winLossData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {winLossData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={WINLOSS_COLORS[index % WINLOSS_COLORS.length]} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: CHART_COLORS.tooltip,
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: 'white',
+                        fontSize: '12px'
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Performance Metrics */}
+        <Card className="bg-white shadow-sm">
+          <CardHeader className="pb-1 xs:pb-2">
+            <CardTitle className="text-base xs:text-lg font-semibold text-gray-900">Performance Metrics</CardTitle>
           </CardHeader>
-          <CardContent className="h-40 flex items-center justify-center">
-            {/* Placeholder for Monthly Performance chart/table */}
-            <span className="text-muted-foreground">(Monthly stats coming soon)</span>
+          <CardContent>
+            <Tabs defaultValue="weekly" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-4 xs:mb-6">
+                <TabsTrigger value="weekly" className="text-xs xs:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+                  Weekly
+                </TabsTrigger>
+                <TabsTrigger value="monthly" className="text-xs xs:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+                  Monthly
+                </TabsTrigger>
+                <TabsTrigger value="yearly" className="text-xs xs:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+                  Yearly
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="weekly">
+                <PerformanceMetrics entries={entries} period="week" />
+              </TabsContent>
+              <TabsContent value="monthly">
+                <PerformanceMetrics entries={entries} period="month" />
+              </TabsContent>
+              <TabsContent value="yearly">
+                <PerformanceMetrics entries={entries} period="year" />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
+    </div>
+  )
+}
+
+// Helper component for performance metrics
+function PerformanceMetrics({ entries, period }: { entries: any[]; period: 'week' | 'month' | 'year' }) {
+  // Get current date
+  const now = new Date()
+  let start: Date, end: Date
+  if (period === 'week') {
+    start = startOfWeek(now, { weekStartsOn: 1 }) // Monday
+    end = endOfWeek(now, { weekStartsOn: 1 })
+  } else if (period === 'month') {
+    start = startOfMonth(now)
+    end = endOfMonth(now)
+  } else {
+    start = startOfYear(now)
+    end = endOfYear(now)
+  }
+
+  // Filter entries in range
+  const filtered = entries.filter(e => {
+    try {
+      const d = parseISO(e.date)
+      return isWithinInterval(d, { start, end })
+    } catch (error) {
+      return false
+    }
+  })
+
+  // Metrics
+  const totalPnL = filtered.reduce((sum, e) => sum + e.pnl, 0)
+  const numTrades = filtered.length
+  const winCount = filtered.filter(e => e.outcome === 'win').length
+  const winRate = numTrades > 0 ? (winCount / numTrades) * 100 : 0
+  const avgPnL = numTrades > 0 ? totalPnL / numTrades : 0
+  const wins = filtered.filter(e => e.pnl > 0)
+  const losses = filtered.filter(e => e.pnl < 0)
+  const avgWin = wins.length > 0 ? wins.reduce((sum, e) => sum + e.pnl, 0) / wins.length : 0
+  const avgLoss = losses.length > 0 ? losses.reduce((sum, e) => sum + Math.abs(e.pnl), 0) / losses.length : 0
+  const rr = avgLoss > 0 ? avgWin / avgLoss : 0
+  
+  // Find best and worst trades with proper initialization
+  const bestTrade = filtered.length > 0 
+    ? filtered.reduce((best, e) => (e.pnl > best.pnl ? e : best), { pnl: -Infinity, date: '' })
+    : { pnl: 0, date: '' }
+  
+  const worstTrade = filtered.length > 0
+    ? filtered.reduce((worst, e) => (e.pnl < worst.pnl ? e : worst), { pnl: Infinity, date: '' })
+    : { pnl: 0, date: '' }
+
+  // Helper function to safely format dates
+  const formatDate = (dateStr: string) => {
+    try {
+      return dateStr ? format(parseISO(dateStr), 'MMM d, yyyy') : 'No date'
+    } catch (error) {
+      return 'Invalid date'
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-2 xs:gap-3 sm:gap-4">
+      <Card className="bg-white shadow-sm">
+        <CardContent className="p-3 xs:p-4">
+          <div className="flex items-center justify-between mb-1 xs:mb-2">
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Total P&L</h3>
+            <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {totalPnL >= 0 ? '↑' : '↓'} {Math.abs(totalPnL).toFixed(2)}%
+            </span>
+          </div>
+          <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            ${totalPnL.toFixed(2)}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white shadow-sm">
+        <CardContent className="p-3 xs:p-4">
+          <div className="flex items-center justify-between mb-1 xs:mb-2">
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Win Rate</h3>
+            <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Period</span>
+          </div>
+          <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{winRate.toFixed(1)}%</div>
+          <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+            {winCount} wins / {numTrades} trades
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white shadow-sm">
+        <CardContent className="p-3 xs:p-4">
+          <div className="flex items-center justify-between mb-1 xs:mb-2">
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Risk/Reward</h3>
+            <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Ratio</span>
+          </div>
+          <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{rr.toFixed(2)}</div>
+          <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+            Avg Win: ${avgWin.toFixed(2)} / Avg Loss: ${avgLoss.toFixed(2)}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white shadow-sm">
+        <CardContent className="p-3 xs:p-4">
+          <div className="flex items-center justify-between mb-1 xs:mb-2">
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Best Trade</h3>
+            <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-green-500">Period</span>
+          </div>
+          <div className="text-lg xs:text-xl sm:text-2xl font-bold text-green-600">${bestTrade.pnl.toFixed(2)}</div>
+          <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+            {formatDate(bestTrade.date)}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white shadow-sm">
+        <CardContent className="p-3 xs:p-4">
+          <div className="flex items-center justify-between mb-1 xs:mb-2">
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Worst Trade</h3>
+            <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-red-500">Period</span>
+          </div>
+          <div className="text-lg xs:text-xl sm:text-2xl font-bold text-red-600">${worstTrade.pnl.toFixed(2)}</div>
+          <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+            {formatDate(worstTrade.date)}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white shadow-sm">
+        <CardContent className="p-3 xs:p-4">
+          <div className="flex items-center justify-between mb-1 xs:mb-2">
+            <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500">Avg Trade</h3>
+            <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Period</span>
+          </div>
+          <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${avgPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            ${avgPnL.toFixed(2)}
+          </div>
+          <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">
+            {numTrades} trades in period
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 } 
