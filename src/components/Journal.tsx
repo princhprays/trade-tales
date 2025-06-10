@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import type { DateRange } from 'react-day-picker'
+import { Dialog as PreviewDialog, DialogContent as PreviewDialogContent } from '@/components/ui/dialog'
 
 interface TradeEntry {
   id: string
@@ -53,6 +54,7 @@ export function Journal() {
   const [editingEntry, setEditingEntry] = useState<TradeEntry | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
 
   const allTags = useMemo(() => {
     const tags = new Set<string>()
@@ -430,73 +432,132 @@ export function Journal() {
               </DialogTitle>
             </DialogHeader>
             {editingEntry && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Setup
-                    </label>
-                    <input
-                      type="text"
-                      value={editingEntry.setup}
-                      onChange={(e) => handleSaveEdit({ ...editingEntry, setup: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Setup
+                      </label>
+                      <input
+                        type="text"
+                        value={editingEntry.setup}
+                        onChange={(e) => handleSaveEdit({ ...editingEntry, setup: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        P&L (%)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingEntry.pnl}
+                        onChange={(e) => handleSaveEdit({ ...editingEntry, pnl: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Outcome
+                      </label>
+                      <select
+                        value={editingEntry.outcome}
+                        onChange={(e) => handleSaveEdit({ ...editingEntry, outcome: e.target.value as 'win' | 'loss' })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="win">Win</option>
+                        <option value="loss">Loss</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Mood
+                      </label>
+                      <select
+                        value={editingEntry.mood || ''}
+                        onChange={(e) => handleSaveEdit({ ...editingEntry, mood: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="great">Great</option>
+                        <option value="good">Good</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="bad">Bad</option>
+                        <option value="terrible">Terrible</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      P&L (%)
-                    </label>
-                    <input
-                      type="number"
-                      value={editingEntry.pnl}
-                      onChange={(e) => handleSaveEdit({ ...editingEntry, pnl: Number(e.target.value) })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Lessons Learned
+                      </label>
+                      <textarea
+                        value={editingEntry.lessons || ''}
+                        onChange={(e) => handleSaveEdit({ ...editingEntry, lessons: e.target.value })}
+                        className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Notes
+                      </label>
+                      <textarea
+                        value={editingEntry.notes || ''}
+                        onChange={(e) => handleSaveEdit({ ...editingEntry, notes: e.target.value })}
+                        className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Trade Images
+                      </label>
+                      <div className="grid grid-cols-2 xs:grid-cols-3 gap-1 xs:gap-2">
+                        {editingEntry.images && editingEntry.images.map((img, idx) => (
+                          <div key={idx} className="relative group">
+                            <img
+                              src={img}
+                              alt={`Trade Image ${idx + 1}`}
+                              className="w-full h-16 xs:h-20 sm:h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => setPreviewImage(img)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Outcome
-                    </label>
-                    <select
-                      value={editingEntry.outcome}
-                      onChange={(e) => handleSaveEdit({ ...editingEntry, outcome: e.target.value as 'win' | 'loss' })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="win">Win</option>
-                      <option value="loss">Loss</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Notes
-                    </label>
-                    <textarea
-                      value={editingEntry.notes || ''}
-                      onChange={(e) => handleSaveEdit({ ...editingEntry, notes: e.target.value })}
-                      className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    />
-                  </div>
-                </div>
-              </div>
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditing(false)}
+                    className="w-full sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => setIsEditing(false)}
+                    className="w-full sm:w-auto"
+                  >
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </>
             )}
-            <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-              <Button
-                variant="outline"
-                onClick={() => setIsEditing(false)}
-                className="w-full sm:w-auto"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => setIsEditing(false)}
-                className="w-full sm:w-auto"
-              >
-                Save Changes
-              </Button>
-            </DialogFooter>
+            {/* Image Preview Dialog (always rendered, controlled by previewImage state) */}
+            <PreviewDialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+              <PreviewDialogContent className="w-[95vw] xs:w-[90vw] sm:max-w-[600px] md:max-w-[800px] lg:max-w-[1000px] p-0 dark:bg-gray-800">
+                {previewImage && (
+                  <div className="relative">
+                    <img
+                      src={previewImage}
+                      alt="Preview"
+                      className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+                    />
+                  </div>
+                )}
+              </PreviewDialogContent>
+            </PreviewDialog>
           </DialogContent>
         </Dialog>
 

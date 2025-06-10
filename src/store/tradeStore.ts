@@ -14,12 +14,15 @@ interface TradeEntry {
   images?: string[]
   notes?: string
   lastSaved?: string
+  positionSize?: number
+  leverage?: number
 }
 
 interface Settings {
   currency: string
   dateFormat: string
   theme: 'light' | 'dark'
+  initialCapital: number
 }
 
 interface TradeStore {
@@ -40,6 +43,7 @@ export const useTradeStore = create<TradeStore>()(
         currency: 'USD',
         dateFormat: 'MM/DD/YYYY',
         theme: 'light',
+        initialCapital: 0,
       },
       addEntry: (entry) =>
         set((state) => ({
@@ -69,6 +73,7 @@ export const useTradeStore = create<TradeStore>()(
             currency: 'USD',
             dateFormat: 'MM/DD/YYYY',
             theme: 'light',
+            initialCapital: 0,
           },
         })),
     }),

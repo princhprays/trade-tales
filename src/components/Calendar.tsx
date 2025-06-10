@@ -81,6 +81,8 @@ interface TradeEntryForm {
     data: string
   }>
   lastSaved?: string
+  positionSize?: number | string
+  leverage?: number | string
 }
 
 // Add form validation interface
@@ -104,6 +106,8 @@ export function Calendar() {
     mood: 'neutral',
     notes: '',
     images: [],
+    positionSize: '',
+    leverage: '',
   })
   const today = new Date()
   const [currentDate, setCurrentDate] = useState(today)
@@ -155,6 +159,8 @@ export function Calendar() {
           data: img
         })) || [],
         lastSaved: entry.lastSaved || new Date().toISOString(),
+        positionSize: entry.positionSize || '',
+        leverage: entry.leverage || '',
       })
       setIsEditing(true)
     } else {
@@ -167,6 +173,8 @@ export function Calendar() {
         mood: 'neutral',
         notes: '',
         images: [],
+        positionSize: '',
+        leverage: '',
       })
       setIsEditing(false)
     }
@@ -193,6 +201,8 @@ export function Calendar() {
           data: img
         })) || [],
         lastSaved: entry.lastSaved || new Date().toISOString(),
+        positionSize: entry.positionSize || '',
+        leverage: entry.leverage || '',
       })
     }
   }
@@ -210,6 +220,8 @@ export function Calendar() {
       mood: 'neutral',
       notes: '',
       images: [],
+      positionSize: '',
+      leverage: '',
     })
     setIsEditing(false)
   }
@@ -269,7 +281,7 @@ export function Calendar() {
     }
     
     if (formData.pnl === '' || isNaN(Number(formData.pnl))) {
-      newErrors.pnl = 'Valid P&L is required'
+      newErrors.pnl = 'Valid P&L ($) is required'
     }
     
     if (formData.lessons.length > 500) {
@@ -295,7 +307,7 @@ export function Calendar() {
       newErrors.setup = 'Setup is required'
     }
     if (formData.pnl === '' || isNaN(Number(formData.pnl))) {
-      newErrors.pnl = 'Valid P&L is required'
+      newErrors.pnl = 'Valid P&L ($) is required'
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -309,17 +321,27 @@ export function Calendar() {
         // Convert images to the format expected by the store
         const images = formData.images?.map(img => img.data) || []
 
+        const rawPnl = Number(formData.pnl);
+        let pnl = rawPnl;
+        if (formData.outcome === 'loss' && rawPnl > 0) {
+          pnl = -rawPnl;
+        } else if (formData.outcome === 'win' && rawPnl < 0) {
+          pnl = Math.abs(rawPnl);
+        }
+
         const entryData = {
           date: selectedDate,
           lessons: formData.lessons,
           setup: formData.setup,
-          pnl: Number(formData.pnl),
+          pnl: pnl,
           outcome: formData.outcome,
           tags: formData.tags,
           mood: formData.mood,
           notes: formData.notes || '',
           images: images,
-          lastSaved: new Date().toISOString()
+          lastSaved: new Date().toISOString(),
+          positionSize: formData.positionSize ? Number(formData.positionSize) : undefined,
+          leverage: formData.leverage ? Number(formData.leverage) : undefined,
         }
 
         if (isEditing) {
@@ -346,6 +368,8 @@ export function Calendar() {
           mood: 'neutral',
           notes: '',
           images: [],
+          positionSize: '',
+          leverage: '',
         })
         setIsEditing(false)
         setSelectedTradeIndex(0)
@@ -395,6 +419,8 @@ export function Calendar() {
             mood: 'neutral',
             notes: '',
             images: [],
+            positionSize: '',
+            leverage: '',
           })
           setIsEditing(false)
           setSelectedTradeIndex(0)
@@ -616,7 +642,7 @@ export function Calendar() {
                       <button
                         onClick={() => handleTradeSelect(Math.max(0, selectedTradeIndex - 1))}
                         disabled={selectedTradeIndex === 0}
-                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 text-2xl font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
                         ←
                       </button>
@@ -626,7 +652,7 @@ export function Calendar() {
                       <button
                         onClick={() => handleTradeSelect(Math.min(entries.filter(entry => entry.date === selectedDate).length - 1, selectedTradeIndex + 1))}
                         disabled={selectedTradeIndex === entries.filter(entry => entry.date === selectedDate).length - 1}
-                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 text-2xl font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
                         →
                       </button>
@@ -656,17 +682,17 @@ export function Calendar() {
 
                 <div>
                   <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    P&L (%)
+                    P&L ($)
                   </label>
                   <input
                     type="number"
                     value={formData.pnl}
                     onChange={(e) => handlePnLChange(e.target.value)}
                     className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter P&L percentage"
+                    placeholder="Enter P&L in dollars"
                   />
                   {errors.pnl && (
-                    <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.pnl}</p>
+                    <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.pnl.replace('P&L', 'P&L ($)')}</p>
                   )}
                 </div>
 
@@ -699,6 +725,34 @@ export function Calendar() {
                     <option value="bad">Bad</option>
                     <option value="terrible">Terrible</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Position Size ($) <span className="text-gray-400">(optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.positionSize === undefined ? '' : formData.positionSize}
+                    onChange={e => setFormData(prev => ({ ...prev, positionSize: e.target.value }))}
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter position size in $"
+                    min="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Leverage (X) <span className="text-gray-400">(optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.leverage === undefined ? '' : formData.leverage}
+                    onChange={e => setFormData(prev => ({ ...prev, leverage: e.target.value }))}
+                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter leverage (e.g. 5 for 5x)"
+                    min="0"
+                  />
                 </div>
               </div>
 
