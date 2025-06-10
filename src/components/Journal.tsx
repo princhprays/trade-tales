@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { format, parseISO, isWithinInterval } from 'date-fns'
 import { useTradeStore } from '@/store/tradeStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,6 +55,8 @@ export function Journal() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const setupInputRef = useRef<HTMLInputElement>(null)
+  const dummyRef = useRef<HTMLButtonElement>(null)
 
   const allTags = useMemo(() => {
     const tags = new Set<string>()
@@ -425,7 +427,11 @@ export function Journal() {
 
         {/* Edit Dialog */}
         <Dialog open={isEditing} onOpenChange={setIsEditing}>
-          <DialogContent className="sm:max-w-[425px] md:max-w-[600px]">
+          <DialogContent 
+            // @ts-expect-error initialFocus is supported by Radix Dialog but not in their types yet
+            initialFocus={isEditing ? dummyRef : setupInputRef}
+            className="sm:max-w-[425px] md:max-w-[600px]">
+            <button ref={dummyRef} tabIndex={0} aria-hidden="true" style={{position:'absolute',opacity:0,pointerEvents:'none',height:0,width:0}} />
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl font-semibold">
                 Edit Trade Entry
@@ -440,10 +446,12 @@ export function Journal() {
                         Setup
                       </label>
                       <input
+                        ref={setupInputRef}
                         type="text"
                         value={editingEntry.setup}
-                        onChange={(e) => handleSaveEdit({ ...editingEntry, setup: e.target.value })}
+                        onChange={e => handleSaveEdit({ ...editingEntry, setup: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter trade setup"
                       />
                     </div>
                     <div>

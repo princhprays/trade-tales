@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useTradeStore } from '@/store/tradeStore'
@@ -458,6 +458,9 @@ export function Calendar() {
     setSelectedImage(image)
   }
 
+  const setupInputRef = useRef<HTMLInputElement>(null)
+  const dummyRef = useRef<HTMLButtonElement>(null)
+
   return (
     <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-[95vw] xs:max-w-[90vw] sm:max-w-[85vw] md:max-w-7xl mx-auto">
@@ -630,7 +633,11 @@ export function Calendar() {
         </Card>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="w-[95vw] xs:w-[90vw] sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px] dark:bg-gray-800">
+          <DialogContent 
+            // @ts-expect-error initialFocus is supported by Radix Dialog but not in their types yet
+            initialFocus={isEditing ? dummyRef : setupInputRef}
+            className="w-[95vw] xs:w-[90vw] sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px] dark:bg-gray-800">
+            <button ref={dummyRef} tabIndex={0} aria-hidden="true" style={{position:'absolute',opacity:0,pointerEvents:'none',height:0,width:0}} />
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle className="text-base xs:text-lg sm:text-xl font-semibold dark:text-white">
@@ -669,9 +676,10 @@ export function Calendar() {
                     Setup
                   </label>
                   <input
+                    ref={setupInputRef}
                     type="text"
                     value={formData.setup}
-                    onChange={(e) => setFormData({ ...formData, setup: e.target.value })}
+                    onChange={e => setFormData({ ...formData, setup: e.target.value })}
                     className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter trade setup"
                   />
