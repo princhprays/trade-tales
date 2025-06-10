@@ -83,6 +83,7 @@ interface TradeEntryForm {
   lastSaved?: string
   positionSize?: number | string
   leverage?: number | string
+  link?: string
 }
 
 // Add form validation interface
@@ -97,6 +98,7 @@ export function Calendar() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [isViewMode, setIsViewMode] = useState(false)
   const [formData, setFormData] = useState<TradeEntryForm>({
     lessons: '',
     setup: '',
@@ -108,6 +110,7 @@ export function Calendar() {
     images: [],
     positionSize: '',
     leverage: '',
+    link: '',
   })
   const today = new Date()
   const [currentDate, setCurrentDate] = useState(today)
@@ -161,8 +164,10 @@ export function Calendar() {
         lastSaved: entry.lastSaved || new Date().toISOString(),
         positionSize: entry.positionSize || '',
         leverage: entry.leverage || '',
+        link: entry.link || '',
       })
-      setIsEditing(true)
+      setIsEditing(false)
+      setIsViewMode(true)
     } else {
       setFormData({
         lessons: '',
@@ -175,8 +180,10 @@ export function Calendar() {
         images: [],
         positionSize: '',
         leverage: '',
+        link: '',
       })
       setIsEditing(false)
+      setIsViewMode(false)
     }
     setIsDialogOpen(true)
   }
@@ -203,8 +210,16 @@ export function Calendar() {
         lastSaved: entry.lastSaved || new Date().toISOString(),
         positionSize: entry.positionSize || '',
         leverage: entry.leverage || '',
+        link: entry.link || '',
       })
+      setIsViewMode(true)
+      setIsEditing(false)
     }
+  }
+
+  const handleEditClick = () => {
+    setIsViewMode(false)
+    setIsEditing(true)
   }
 
   const handleAddNewTrade = () => {
@@ -222,8 +237,10 @@ export function Calendar() {
       images: [],
       positionSize: '',
       leverage: '',
+      link: '',
     })
     setIsEditing(false)
+    setIsViewMode(false)
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,6 +359,7 @@ export function Calendar() {
           lastSaved: new Date().toISOString(),
           positionSize: formData.positionSize ? Number(formData.positionSize) : undefined,
           leverage: formData.leverage ? Number(formData.leverage) : undefined,
+          link: formData.link || '',
         }
 
         if (isEditing) {
@@ -370,6 +388,7 @@ export function Calendar() {
           images: [],
           positionSize: '',
           leverage: '',
+          link: '',
         })
         setIsEditing(false)
         setSelectedTradeIndex(0)
@@ -421,6 +440,7 @@ export function Calendar() {
             images: [],
             positionSize: '',
             leverage: '',
+            link: '',
           })
           setIsEditing(false)
           setSelectedTradeIndex(0)
@@ -644,7 +664,7 @@ export function Calendar() {
                   {selectedDate ? format(new Date(selectedDate), 'MMMM d, yyyy') : ''}
                 </DialogTitle>
                 <div className="flex items-center gap-2">
-                  {isEditing && (
+                  {isViewMode && (
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleTradeSelect(Math.max(0, selectedTradeIndex - 1))}
@@ -682,6 +702,7 @@ export function Calendar() {
                     onChange={e => setFormData({ ...formData, setup: e.target.value })}
                     className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter trade setup"
+                    disabled={isViewMode}
                   />
                   {errors.setup && (
                     <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.setup}</p>
@@ -698,6 +719,7 @@ export function Calendar() {
                     onChange={(e) => handlePnLChange(e.target.value)}
                     className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter P&L in dollars"
+                    disabled={isViewMode}
                   />
                   {errors.pnl && (
                     <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.pnl.replace('P&L', 'P&L ($)')}</p>
@@ -712,6 +734,7 @@ export function Calendar() {
                     value={formData.outcome}
                     onChange={(e) => setFormData({ ...formData, outcome: e.target.value as 'win' | 'loss' })}
                     className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    disabled={isViewMode}
                   >
                     <option value="win">Win</option>
                     <option value="loss">Loss</option>
@@ -726,6 +749,7 @@ export function Calendar() {
                     value={formData.mood}
                     onChange={(e) => setFormData({ ...formData, mood: e.target.value })}
                     className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    disabled={isViewMode}
                   >
                     <option value="great">Great</option>
                     <option value="good">Good</option>
@@ -746,6 +770,7 @@ export function Calendar() {
                     className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter position size in $"
                     min="0"
+                    disabled={isViewMode}
                   />
                 </div>
 
@@ -760,7 +785,39 @@ export function Calendar() {
                     className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter leverage (e.g. 5 for 5x)"
                     min="0"
+                    disabled={isViewMode}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Trade Link <span className="text-gray-400">(optional)</span>
+                  </label>
+                  {isViewMode ? (
+                    formData.link ? (
+                      <a
+                        href={formData.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline truncate block"
+                      >
+                        {formData.link}
+                      </a>
+                    ) : (
+                      <span className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base text-gray-500 dark:text-gray-400">
+                        No link provided
+                      </span>
+                    )
+                  ) : (
+                    <input
+                      type="url"
+                      value={formData.link || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, link: e.target.value }))}
+                      className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Enter trade link (e.g. chart, analysis, etc.)"
+                      disabled={isViewMode}
+                    />
+                  )}
                 </div>
               </div>
 
@@ -777,6 +834,7 @@ export function Calendar() {
                     onChange={(e) => handleTextChange('lessons', e.target.value)}
                     className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
                     placeholder="What did you learn from this trade?"
+                    disabled={isViewMode}
                   />
                   {errors.lessons && (
                     <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.lessons}</p>
@@ -795,6 +853,7 @@ export function Calendar() {
                     onChange={(e) => handleTextChange('notes', e.target.value)}
                     className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
                     placeholder="Additional notes about the trade"
+                    disabled={isViewMode}
                   />
                 </div>
 
@@ -811,27 +870,31 @@ export function Calendar() {
                           className="w-full h-16 xs:h-20 sm:h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => handleImageClick(image)}
                         />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveImage(index);
-                          }}
-                          className="absolute top-0.5 xs:top-1 right-0.5 xs:right-1 p-0.5 xs:p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                        >
-                          ×
-                        </button>
+                        {!isViewMode && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveImage(index);
+                            }}
+                            className="absolute top-0.5 xs:top-1 right-0.5 xs:right-1 p-0.5 xs:p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                          >
+                            ×
+                          </button>
+                        )}
                       </div>
                     ))}
-                    <label className="flex items-center justify-center h-16 xs:h-20 sm:h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                      <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Add Images</span>
-                    </label>
+                    {!isViewMode && (
+                      <label className="flex items-center justify-center h-16 xs:h-20 sm:h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                        <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Add Images</span>
+                      </label>
+                    )}
                   </div>
                 </div>
               </div>
@@ -839,21 +902,27 @@ export function Calendar() {
 
             <DialogFooter className="flex flex-col xs:flex-row gap-2 xs:gap-4">
               <div className="flex gap-2 w-full xs:w-auto">
-                {isEditing && (
-                  <button
-                    onClick={handleDeleteEntry}
-                    className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
-                  >
-                    Delete Trade
-                  </button>
-                )}
-                {isEditing && (
-                  <button
-                    onClick={handleAddNewTrade}
-                    className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
-                  >
-                    New Trade
-                  </button>
+                {isViewMode && (
+                  <>
+                    <button
+                      onClick={handleEditClick}
+                      className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
+                    >
+                      Edit Trade
+                    </button>
+                    <button
+                      onClick={handleDeleteEntry}
+                      className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
+                    >
+                      Delete Trade
+                    </button>
+                    <button
+                      onClick={handleAddNewTrade}
+                      className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
+                    >
+                      New Trade
+                    </button>
+                  </>
                 )}
               </div>
               <div className="flex gap-2 w-full xs:w-auto">
@@ -863,20 +932,22 @@ export function Calendar() {
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleSaveEntry}
-                  disabled={isSaving}
-                  className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-3 h-3 xs:w-4 xs:h-4 mr-1 xs:mr-2 animate-spin inline" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Trade'
-                  )}
-                </button>
+                {!isViewMode && (
+                  <button
+                    onClick={handleSaveEntry}
+                    disabled={isSaving}
+                    className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-3 h-3 xs:w-4 xs:h-4 mr-1 xs:mr-2 animate-spin inline" />
+                        Saving...
+                      </>
+                    ) : (
+                      isEditing ? 'Update Trade' : 'Save Trade'
+                    )}
+                  </button>
+                )}
               </div>
             </DialogFooter>
           </DialogContent>
