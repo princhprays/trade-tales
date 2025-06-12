@@ -707,6 +707,40 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
             <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
               {selectedDate ? format(new Date(selectedDate), 'MMMM d, yyyy') : ''}
             </DialogTitle>
+            {/* Trade Navigation - Show when multiple trades exist */}
+            {isViewMode && selectedDate && (() => {
+              const dayEntries = entries.filter(entry => entry.date === selectedDate)
+              if (dayEntries.length > 1) {
+                return (
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Trade {selectedTradeIndex + 1} of {dayEntries.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleTradeSelect(Math.max(0, selectedTradeIndex - 1))}
+                        disabled={selectedTradeIndex === 0}
+                        className="p-2.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-lg"
+                        title="Previous trade"
+                      >
+                        ←
+                      </button>
+                      <button
+                        onClick={() => handleTradeSelect(Math.min(dayEntries.length - 1, selectedTradeIndex + 1))}
+                        disabled={selectedTradeIndex === dayEntries.length - 1}
+                        className="p-2.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-lg"
+                        title="Next trade"
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+                )
+              }
+              return null
+            })()}
           </DialogHeader>
 
           <div className="space-y-2 sm:space-y-4">
@@ -863,7 +897,7 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
                   <textarea
                     value={formData.lessons}
                     onChange={(e) => handleTextChange('lessons', e.target.value)}
-                    className="w-full h-24 px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+                    className="w-full h-24 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
                     placeholder="What did you learn from this trade?"
                     disabled={isViewMode}
                   />
@@ -876,7 +910,7 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
                   <textarea
                     value={formData.notes}
                     onChange={(e) => handleTextChange('notes', e.target.value)}
-                    className="w-full h-24 px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+                    className="w-full h-24 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
                     placeholder="Additional notes about the trade"
                     disabled={isViewMode}
                   />
