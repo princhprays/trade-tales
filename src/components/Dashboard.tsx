@@ -13,7 +13,7 @@ import { normalizeTradeName } from '../store/tradeStore'
 import { DateRangePicker } from './ui/date-range-picker'
 import type { DateRange } from 'react-day-picker'
 import { ImageViewer } from './ui/image-viewer'
-import { Search } from 'lucide-react'
+import { Search, DollarSign, TrendingUp, TrendingDown, Target, Calendar, Award, BarChart2, ArrowUpRight, ArrowDownRight, Zap, Brain, AlertTriangle } from 'lucide-react'
 
 const WINLOSS_COLORS = ['#10B981', '#EF4444'] // Modern green and red
 const CHART_COLORS = {
@@ -233,107 +233,139 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string, fromComp
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6 sm:mb-8">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Total Assets</h3>
+        {/* Key Metrics - Updated with modern design */}
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 mb-6">
+          {/* Total Assets Card */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="rounded-full p-2 bg-blue-100 dark:bg-blue-900/20">
+                  <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-[10px] xs:text-xs sm:text-sm h-6 xs:h-7 sm:h-8 px-2"
+                  className="text-xs h-7 px-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                   onClick={() => setIsEditingCapital(true)}
                 >
                   Edit
                 </Button>
               </div>
-              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                 ${totalAssets.toFixed(2)}
               </div>
-              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Assets</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Initial: ${initialCapital.toFixed(2)}
-              </div>
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Total PnL</h3>
-                <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                  {totalPnL >= 0 ? '↑' : '↓'} ${Math.abs(totalPnL).toFixed(2)}
-                </span>
+          {/* Total PnL Card */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className={`rounded-full p-2 ${totalPnL >= 0 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
+                  {totalPnL >= 0 ? (
+                    <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {totalPnL >= 0 ? (
+                    <ArrowUpRight className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <ArrowDownRight className="w-4 h-4 text-red-500" />
+                  )}
+                  <span className={`text-xs font-semibold ${totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {initialCapital > 0 ? `${((totalPnL / initialCapital) * 100).toFixed(1)}%` : '0%'}
+                  </span>
+                </div>
               </div>
-              <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} dark:text-white`}>
+              <div className={`text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mb-1`}>
                 {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
               </div>
-              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                {initialCapital > 0 ? `${((totalPnL / initialCapital) * 100).toFixed(1)}% return` : 'No initial capital set'}
-                , {entries.length} trades total
-              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total P&L</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {entries.length} trades total
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Streaks</h3>
-                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Current/Longest</span>
+          {/* Streaks Card */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="rounded-full p-2 bg-purple-100 dark:bg-purple-900/20">
+                  <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <span className="text-xs font-medium text-purple-500">Current/Longest</span>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-base xs:text-lg sm:text-xl">🔥</span>
-                  <div className="text-base xs:text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                    Current: {currentStreak}
+                  <span className="text-lg">🔥</span>
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">
+                    {currentStreak}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-base xs:text-lg sm:text-xl">🏆</span>
-                  <div className="text-base xs:text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                    Longest: {longestStreak}
+                  <span className="text-lg">🏆</span>
+                  <div className="text-xl font-bold text-gray-900 dark:text-white">
+                    {longestStreak}
                   </div>
                 </div>
               </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Win Streaks</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Trade Frequency</h3>
-                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Avg/Day</span>
+          {/* Trade Frequency Card */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="rounded-full p-2 bg-orange-100 dark:bg-orange-900/20">
+                  <BarChart2 className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <span className="text-xs font-medium text-orange-500">Avg/Day</span>
               </div>
-              <div className="text-base xs:text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                 {avgTradesPerDay.toFixed(2)}
               </div>
-              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                You place {avgTradesPerDay.toFixed(2)} trades/day on average.
-              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Trade Frequency</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Average trades per day
+              </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Best Trade</h3>
-                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-green-500">All time</span>
+          {/* Best Trade Card */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="rounded-full p-2 bg-yellow-100 dark:bg-yellow-900/20">
+                  <Award className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <span className="text-xs font-medium text-yellow-500">All time</span>
               </div>
-              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-green-600 dark:text-white">${bestTrade.pnl.toFixed(2)}</div>
-              <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
+                ${bestTrade.pnl.toFixed(2)}
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Best Trade</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {bestTrade.coin && bestTrade.setup ? `${bestTrade.coin} - ${bestTrade.setup}` : 'No trade recorded'}
-              </div>
+              </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6 sm:mb-8">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm">
-            <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Daily P&L</CardTitle>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Daily P&L</CardTitle>
             </CardHeader>
-            <CardContent className="h-[250px] xs:h-[300px] sm:h-[400px]">
+            <CardContent className="h-[400px]">
               {filteredEntries.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-lg font-medium">
                   No data available yet
@@ -376,11 +408,11 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string, fromComp
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 shadow-sm">
-            <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Win/Loss Distribution</CardTitle>
+          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Win/Loss Distribution</CardTitle>
             </CardHeader>
-            <CardContent className="h-[250px] xs:h-[300px] sm:h-[350px] md:h-[380px] lg:h-[400px]">
+            <CardContent className="h-[400px]">
               {filteredEntries.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-lg font-medium">
                   No data available yet
@@ -423,23 +455,23 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: string, fromComp
         </div>
 
         {/* Performance Metrics */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
-          <CardHeader className="pb-1 xs:pb-2">
-            <CardTitle className="text-base xs:text-lg font-semibold text-gray-900 dark:text-white">Performance Metrics</CardTitle>
+        <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Performance Metrics</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="daily" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-4 xs:mb-6">
-                <TabsTrigger value="daily" className="text-xs xs:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+              <TabsList className="grid w-full grid-cols-4 mb-6">
+                <TabsTrigger value="daily" className="text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                   Daily
                 </TabsTrigger>
-                <TabsTrigger value="weekly" className="text-xs xs:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+                <TabsTrigger value="weekly" className="text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                   Weekly
                 </TabsTrigger>
-                <TabsTrigger value="monthly" className="text-xs xs:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+                <TabsTrigger value="monthly" className="text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                   Monthly
                 </TabsTrigger>
-                <TabsTrigger value="yearly" className="text-xs xs:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+                <TabsTrigger value="yearly" className="text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                   Yearly
                 </TabsTrigger>
               </TabsList>
@@ -831,72 +863,112 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
 
   return (
     <>
-      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-2 xs:gap-3 sm:gap-4">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
-          <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-1 xs:mb-2">
-              <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Total PnL</h3>
-              <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                {totalPnL >= 0 ? '↑' : '↓'} ${Math.abs(totalPnL).toFixed(2)}
-              </span>
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Total PnL Card */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className={`rounded-full p-2 ${totalPnL >= 0 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
+                {totalPnL >= 0 ? (
+                  <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                ) : (
+                  <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {totalPnL >= 0 ? (
+                  <ArrowUpRight className="w-4 h-4 text-green-500" />
+                ) : (
+                  <ArrowDownRight className="w-4 h-4 text-red-500" />
+                )}
+                <span className={`text-xs font-semibold ${totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {initialCapital > 0 ? `${((totalPnL / initialCapital) * 100).toFixed(1)}%` : '0%'}
+                </span>
+              </div>
             </div>
-            <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} dark:text-white`}>
+            <div className={`text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mb-1`}>
               {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
             </div>
-            <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              {initialCapital > 0 ? `${((totalPnL / initialCapital) * 100).toFixed(1)}% return` : 'No initial capital set'}
-              <br />
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total P&L</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {entries.length} trades total
-            </div>
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
-          <CardContent className="p-3 xs:p-4">
-            <div className="flex items-center justify-between mb-1 xs:mb-2">
-              <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Win Rate</h3>
-              <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Period</span>
+        {/* Win Rate Card */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="rounded-full p-2 bg-blue-100 dark:bg-blue-900/20">
+                <Target className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="text-xs font-medium text-blue-500">Period</span>
             </div>
-            <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{winRate.toFixed(1)}%</div>
-            <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">{winCount} wins / {numTrades} trades</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+              {winRate.toFixed(1)}%
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Win Rate</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {winCount} wins / {numTrades} trades
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
-          <CardContent className="p-3 xs:p-4">
-            <div className="flex items-center justify-between mb-1 xs:mb-2">
-              <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Avg Trade</h3>
-              <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Period</span>
+        {/* Avg Trade Card */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="rounded-full p-2 bg-purple-100 dark:bg-purple-900/20">
+                <BarChart2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="text-xs font-medium text-purple-500">Period</span>
             </div>
-            <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${avgPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{avgPnL.toFixed(2)}</div>
-            <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">{numTrades} trades in period</div>
+            <div className={`text-2xl font-bold ${avgPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mb-1`}>
+              {avgPnL >= 0 ? '+' : ''}${avgPnL.toFixed(2)}
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Avg Trade</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {numTrades} trades in period
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
-          <CardContent className="p-3 xs:p-4">
-            <div className="flex items-center justify-between mb-1 xs:mb-2">
-              <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Risk/Reward</h3>
-              <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Ratio</span>
+        {/* Risk/Reward Card */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="rounded-full p-2 bg-orange-100 dark:bg-orange-900/20">
+                <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <span className="text-xs font-medium text-orange-500">Ratio</span>
             </div>
-            <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">{rr.toFixed(2)}</div>
-            <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500">Avg Win: ${avgWin.toFixed(2)} / Avg Loss: ${avgLoss.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+              {rr.toFixed(2)}
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Risk/Reward</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Avg Win: ${avgWin.toFixed(2)} / Avg Loss: ${avgLoss.toFixed(2)}
+            </p>
           </CardContent>
         </Card>
 
-        {/* Most Traded Setup */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
-          <CardContent className="p-3 xs:p-4 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-1 xs:mb-2">
-              <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Most Traded Setup</h3>
-              <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Period</span>
+        {/* Most Traded Setup Card */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="rounded-full p-2 bg-yellow-100 dark:bg-yellow-900/20">
+                <Award className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <span className="text-xs font-medium text-yellow-500">Period</span>
             </div>
-            <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
               {mostTradedSetupInfo ? mostTradedSetupInfo.setup : 'No trades yet'}
             </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Most Traded Setup</p>
             {mostTradedSetupInfo && (
               <button
-                className="text-[10px] xs:text-xs sm:text-sm text-blue-600 dark:text-blue-400 mt-1 underline underline-offset-2 text-left w-fit"
+                className="text-xs text-blue-600 dark:text-blue-400 mt-1 underline underline-offset-2 text-left w-fit hover:text-blue-700 dark:hover:text-blue-300"
                 onClick={() => {
                   setModalTrades(mostTradedSetupInfo.trades);
                   setModalSetup(mostTradedSetupInfo.setup);
@@ -910,39 +982,47 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
           </CardContent>
         </Card>
 
-        {/* Max Drawdown */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
-          <CardContent className="p-3 xs:p-4 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-1 xs:mb-2">
-              <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Max Drawdown</h3>
-              <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-red-500">Period</span>
+        {/* Max Drawdown Card */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="rounded-full p-2 bg-red-100 dark:bg-red-900/20">
+                <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <span className="text-xs font-medium text-red-500">Period</span>
             </div>
             <div className="flex flex-col">
-              <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${maxDrawdown === 0 ? 'text-gray-900 dark:text-white' : 'text-red-600'}`}>
+              <div className={`text-2xl font-bold ${maxDrawdown === 0 ? 'text-gray-900 dark:text-white' : 'text-red-600'} mb-1`}>
                 {maxDrawdown === 0
                   ? '$0.00'
                   : `-$${Math.abs(maxDrawdown).toFixed(2)}`}
               </div>
               {maxDrawdown !== 0 && (
-                <div className="text-xs xs:text-sm text-red-600 dark:text-red-400 mt-1">
+                <div className="text-xs text-red-600 dark:text-red-400 mb-1">
                   {maxDrawdownPercent.toFixed(1)}% of peak
                 </div>
               )}
             </div>
-            <div className="mt-auto pt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Max Drawdown</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Calculated from equity curve
-            </div>
+            </p>
           </CardContent>
         </Card>
 
         {/* Equity Curve Chart */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 col-span-1 xs:col-span-2 lg:col-span-3">
-          <CardContent className="p-3 xs:p-4">
-            <div className="flex items-center justify-between mb-1 xs:mb-2">
-              <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Equity Curve</h3>
-              <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Period</span>
+        <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 col-span-1 xs:col-span-2 lg:col-span-3">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="rounded-full p-2 bg-indigo-100 dark:bg-indigo-900/20">
+                  <Brain className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Equity Curve</h3>
+              </div>
+              <span className="text-xs font-medium text-indigo-500">Period</span>
             </div>
-            <div className="h-[200px] xs:h-[250px] sm:h-[300px]">
+            <div className="h-[300px]">
               {equityCurve.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center py-8 px-4">
                   <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
@@ -1031,7 +1111,7 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
                 </ResponsiveContainer>
               )}
             </div>
-            <div className="mt-2 flex items-center justify-center gap-4 text-[10px] xs:text-xs text-gray-500 dark:text-gray-400">
+            <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-gray-400">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-0.5 bg-blue-500"></div>
                 <span>Equity</span>
