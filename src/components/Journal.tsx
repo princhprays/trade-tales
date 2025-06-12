@@ -41,9 +41,13 @@ interface FilterState {
   tags: string[]
 }
 
+interface JournalProps {
+  onNavigate?: (page: string) => void
+}
+
 const ITEMS_PER_PAGE = 10
 
-export function Journal() {
+export function Journal({ onNavigate }: JournalProps) {
   const { entries, deleteEntry, updateEntry, settings } = useTradeStore()
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
@@ -340,6 +344,37 @@ export function Journal() {
     handleSaveEdit({ ...editingEntry, images: editingEntry.images?.filter((_, i) => i !== index) })
   }
 
+  // CSV Export functions
+  const generateCSV = (entries: TradeEntry[]) => {
+    const headers = ['Date', 'Setup', 'PnL', 'Outcome', 'Tags', 'Mood', 'Lessons', 'Notes']
+    const csvContent = [
+      headers.join(','),
+      ...entries.map(entry => [
+        format(parseISO(entry.date), 'yyyy-MM-dd'),
+        `"${entry.setup.join('; ')}"`,
+        entry.pnl,
+        entry.outcome,
+        `"${entry.tags.join('; ')}"`,
+        entry.mood,
+        `"${entry.lessons.replace(/"/g, '""')}"`,
+        `"${(entry.notes || '').replace(/"/g, '""')}"`
+      ].join(','))
+    ].join('\n')
+    return csvContent
+  }
+
+  const downloadCSV = (csvContent: string, filename: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -418,137 +453,168 @@ export function Journal() {
 
         {/* Journal Entries Table */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    <input
-                      type="checkbox"
-                      checked={selectedRows.size === paginatedEntries.length}
-                      onChange={() => {
-                        if (selectedRows.size === paginatedEntries.length) {
-                          setSelectedRows(new Set())
-                        } else {
-                          setSelectedRows(new Set(paginatedEntries.map(entry => entry.id)))
-                        }
-                      }}
-                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400"
-                    />
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Setup
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    PnL
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Tags
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {paginatedEntries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-4 py-3">
+          {paginatedEntries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                <Search className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                {filterEntries(entries).length === 0 ? 'No trade entries yet' : 'No entries match your filters'}
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
+                {filterEntries(entries).length === 0 
+                  ? 'Start tracking your trades by adding your first entry. This will help you analyze your performance and improve your trading strategy.'
+                  : 'Try adjusting your search terms or date range to see more results.'
+                }
+              </p>
+              {filterEntries(entries).length === 0 && (
+                <Button 
+                  className="mt-4"
+                  onClick={() => {
+                    if (onNavigate) {
+                      onNavigate('calendar')
+                    }
+                  }}
+                >
+                  Add Your First Trade
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       <input
                         type="checkbox"
-                        checked={selectedRows.has(entry.id)}
-                        onChange={() => handleRowSelect(entry.id)}
+                        checked={selectedRows.size === paginatedEntries.length}
+                        onChange={() => {
+                          if (selectedRows.size === paginatedEntries.length) {
+                            setSelectedRows(new Set())
+                          } else {
+                            setSelectedRows(new Set(paginatedEntries.map(entry => entry.id)))
+                          }
+                        }}
                         className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400"
                       />
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      {format(parseISO(entry.date), 'MMM d, yyyy')}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {entry.setup.map((setup, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300"
-                          >
-                            {setup}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-sm font-medium ${entry.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {entry.pnl >= 0 ? '+' : ''}{entry.pnl.toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {entry.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleEdit(entry)}
-                        >
-                          <Edit2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleDelete(entry.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                        </Button>
-                      </div>
-                    </td>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Setup
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      PnL
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Tags
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {paginatedEntries.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.has(entry.id)}
+                          onChange={() => handleRowSelect(entry.id)}
+                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400"
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        {format(parseISO(entry.date), 'MMM d, yyyy')}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {entry.setup.map((setup, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300"
+                            >
+                              {setup}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-sm font-medium ${entry.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {entry.pnl >= 0 ? '+' : ''}{entry.pnl.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {entry.tags.map((tag, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleEdit(entry)}
+                          >
+                            <Edit2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleDelete(entry.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filterEntries(entries).length)} of {filterEntries(entries).length} entries
+        {/* Pagination - Only show if there are entries */}
+        {paginatedEntries.length > 0 && (
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filterEntries(entries).length)} of {filterEntries(entries).length} entries
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8 px-3"
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-8 px-3"
+              >
+                Next
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="h-8 px-3"
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="h-8 px-3"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        )}
 
         {/* Edit Dialog */}
         <Dialog open={isEditing} onOpenChange={setIsEditing}>

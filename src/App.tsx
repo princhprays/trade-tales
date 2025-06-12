@@ -19,7 +19,7 @@ function App() {
         <main className="flex-1 h-full min-h-0 min-w-0 overflow-y-auto flex flex-col p-6">
           {activePage === 'dashboard' && <Dashboard />}
           {activePage === 'calendar' && <Calendar />}
-          {activePage === 'journal' && <Journal />}
+          {activePage === 'journal' && <Journal onNavigate={setActivePage} />}
           {activePage === 'analytics' && <Analytics />}
           {activePage === 'settings' && <Settings />}
         </main>
