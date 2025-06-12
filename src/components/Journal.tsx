@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useToast } from '@/components/ui/use-toast'
-import { Search, Filter, Download, ChevronUp, ChevronDown, Edit2, Trash2, Check } from 'lucide-react'
+import { Search, Filter, Download, ChevronUp, ChevronDown, Edit2, Trash2, Check, Calendar, Target, DollarSign } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
@@ -26,6 +26,7 @@ interface TradeEntry {
   mood: string
   images?: string[]
   notes?: string
+  link?: string
 }
 
 interface SortConfig {
@@ -59,6 +60,7 @@ export function Journal({ onNavigate }: JournalProps) {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
   const [isEditing, setIsEditing] = useState(false)
   const [editingEntry, setEditingEntry] = useState<TradeEntry | null>(null)
+  const [isViewMode, setIsViewMode] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null)
   const [imageViewer, setImageViewer] = useState<{ open: boolean, index: number }>({ open: false, index: 0 })
@@ -178,6 +180,12 @@ export function Journal({ onNavigate }: JournalProps) {
 
   const handleEdit = (entry: TradeEntry) => {
     setEditingEntry(entry)
+    setIsViewMode(true)
+    setIsEditing(false)
+  }
+
+  const handleStartEdit = () => {
+    setIsViewMode(false)
     setIsEditing(true)
   }
 
@@ -194,6 +202,7 @@ export function Journal({ onNavigate }: JournalProps) {
         description: 'Trade entry updated',
       })
       setIsEditing(false)
+      setIsViewMode(false)
       setEditingEntry(null)
     }
   }
@@ -421,28 +430,42 @@ export function Journal({ onNavigate }: JournalProps) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total Trades</h3>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalTrades}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Win Rate</h3>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.winRate.toFixed(1)}%</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total PnL</h3>
-              <div className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {stats.totalPnL >= 0 ? '+' : ''}{stats.totalPnL.toFixed(2)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          {/* Total Trades */}
+          <Card className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex flex-col justify-between h-full border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-1">
+              <div className="rounded-full p-2 bg-blue-50 dark:bg-blue-900/20">
+                <Calendar className="w-5 h-5 text-blue-500" />
               </div>
-            </CardContent>
+            </div>
+            <div className="mt-1">
+              <div className="text-2xl font-bold text-blue-600 mb-0.5">{stats.totalTrades}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Trades</div>
+            </div>
+          </Card>
+          {/* Win Rate */}
+          <Card className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex flex-col justify-between h-full border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-1">
+              <div className="rounded-full p-2 bg-green-50 dark:bg-green-900/20">
+                <Target className="w-5 h-5 text-green-500" />
+              </div>
+            </div>
+            <div className="mt-1">
+              <div className="text-2xl font-bold text-green-600 mb-0.5">{stats.winRate.toFixed(1)}%</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">Win Rate</div>
+            </div>
+          </Card>
+          {/* Total PnL */}
+          <Card className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex flex-col justify-between h-full border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-1">
+              <div className="rounded-full p-2 bg-emerald-50 dark:bg-emerald-900/20">
+                <DollarSign className="w-5 h-5 text-emerald-500" />
+              </div>
+            </div>
+            <div className="mt-1">
+              <div className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'} mb-0.5`}>{stats.totalPnL >= 0 ? '+' : ''}{stats.totalPnL.toFixed(2)}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total PnL</div>
+            </div>
           </Card>
         </div>
 
@@ -649,171 +672,349 @@ export function Journal({ onNavigate }: JournalProps) {
         )}
 
         {/* Edit Dialog */}
-        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+        <Dialog open={isViewMode || isEditing} onOpenChange={(open) => {
+          if (!open) {
+            setIsViewMode(false)
+            setIsEditing(false)
+            setEditingEntry(null)
+          }
+        }}>
           <DialogContent className="sm:max-w-[600px] md:max-w-[800px]" aria-labelledby="edit-dialog-title" aria-describedby="edit-dialog-description">
             <DialogHeader>
               <DialogTitle id="edit-dialog-title" className="text-lg sm:text-xl font-semibold">
-                Edit Trade Entry
+                {isViewMode ? 'Trade Entry Details' : 'Edit Trade Entry'}
               </DialogTitle>
-              <DialogDescription id="edit-dialog-description" className="sr-only">Edit the details of your trade entry.</DialogDescription>
+              <DialogDescription id="edit-dialog-description" className="sr-only">
+                {isViewMode ? 'View the details of your trade entry.' : 'Edit the details of your trade entry.'}
+              </DialogDescription>
             </DialogHeader>
             {editingEntry && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Setup
-                      </label>
-                      <SetupInput
-                        value={editingEntry.setup}
-                        onChange={(value) => handleSaveEdit({ ...editingEntry, setup: value })}
-                        className="w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Coin
-                      </label>
-                      <CoinInput
-                        value={editingEntry.coin}
-                        onChange={(value) => handleSaveEdit({ ...editingEntry, coin: value })}
-                        className="w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        P&L ($)
-                      </label>
-                      <input
-                        type="number"
-                        value={editingEntry.pnl}
-                        onChange={(e) => handleSaveEdit({ ...editingEntry, pnl: Number(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Outcome
-                      </label>
-                      <select
-                        value={editingEntry.outcome}
-                        onChange={(e) => handleSaveEdit({ ...editingEntry, outcome: e.target.value as 'win' | 'loss' })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="win">Win</option>
-                        <option value="loss">Loss</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Mood
-                      </label>
-                      <select
-                        value={editingEntry.mood || ''}
-                        onChange={(e) => handleSaveEdit({ ...editingEntry, mood: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="great">Great</option>
-                        <option value="good">Good</option>
-                        <option value="neutral">Neutral</option>
-                        <option value="bad">Bad</option>
-                        <option value="terrible">Terrible</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Lessons Learned
-                      </label>
-                      <textarea
-                        value={editingEntry.lessons || ''}
-                        onChange={(e) => handleSaveEdit({ ...editingEntry, lessons: e.target.value })}
-                        className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Notes
-                      </label>
-                      <textarea
-                        value={editingEntry.notes || ''}
-                        onChange={(e) => handleSaveEdit({ ...editingEntry, notes: e.target.value })}
-                        className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Trade Images
-                      </label>
-                      <div className="flex space-x-5 overflow-x-auto py-2">
-                        {editingEntry?.images?.length === 0 && (
-                          <span className="text-gray-400 text-base flex items-center">No photo uploaded</span>
-                        )}
-                        {editingEntry?.images?.map((img, idx) => (
-                          <div key={idx} className="relative w-[160px] h-[110px] rounded-lg shadow border overflow-hidden group flex-shrink-0">
-                            <img
-                              src={img}
-                              alt={`Trade Image ${idx + 1}`}
-                              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                              onClick={() => {
-                                setSelectedImage({ preview: img, name: `Trade Image ${idx + 1}` })
-                                setCurrentImageIndex(idx)
-                                setScale(1)
-                                setPosition({ x: 0, y: 0 })
-                                setIsPreviewOpen(true)
-                              }}
-                            />
-                            <button
-                              onClick={e => { e.stopPropagation(); handleRemoveImage(idx); }}
-                              className="absolute top-2 right-2 bg-white bg-opacity-90 rounded-full p-1.5 hover:bg-red-500 hover:text-white transition text-xl shadow"
-                              title="Delete"
-                            >×</button>
+                {isViewMode ? (
+                  // View Mode Content
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Setup</label>
+                          <div className="w-full px-3 py-2 text-base text-gray-900 bg-gray-100 rounded-lg">
+                            {editingEntry.setup.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {editingEntry.setup.map((setup, index) => (
+                                  <span
+                                    key={index}
+                                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                                  >
+                                    {setup}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">No setup specified</span>
+                            )}
                           </div>
-                        ))}
-                        <label
-                          className={
-                            `flex items-center justify-center w-[160px] h-[110px] border-2 border-dashed rounded-lg cursor-pointer transition-colors flex-shrink-0 ` +
-                            (isDraggingUpload
-                              ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30'
-                              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500')
-                          }
-                          onDragEnter={handleDragEnter}
-                          onDragLeave={handleDragLeave}
-                          onDragOver={handleDragOver}
-                          onDrop={handleDrop}
-                        >
-                          <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={handleFileChange}
-                            className="hidden"
-                          />
-                          <span className="text-lg text-gray-500 dark:text-gray-400 text-center">
-                            +<br />Upload or drag & drop images
-                          </span>
-                        </label>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Coin</label>
+                          <div className="w-full px-3 py-2 text-base text-gray-900 bg-gray-100 rounded-lg">
+                            {editingEntry.coin ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                {editingEntry.coin}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">No coin specified</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">P&L ($)</label>
+                          <div className="w-full px-3 py-2 text-base text-gray-900 bg-gray-100 rounded-lg">
+                            <span className={`font-medium ${editingEntry.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {editingEntry.pnl >= 0 ? '+' : ''}{editingEntry.pnl.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Outcome</label>
+                          <div className="w-full px-3 py-2 text-base text-gray-900 bg-gray-100 rounded-lg">
+                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                              editingEntry.outcome === 'win' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {editingEntry.outcome.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Mood</label>
+                          <div className="w-full px-3 py-2 text-base text-gray-900 bg-gray-100 rounded-lg">
+                            {editingEntry.mood ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                                {editingEntry.mood}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">No mood specified</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Trade Link</label>
+                          <div className="w-full px-3 py-2 text-base text-gray-900 bg-gray-100 rounded-lg">
+                            {editingEntry.link ? (
+                              <a
+                                href={editingEntry.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-700 hover:underline truncate block"
+                              >
+                                {editingEntry.link}
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">No link provided</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Lessons Learned</label>
+                          <div className="w-full px-3 py-2 text-sm text-gray-900 bg-gray-100 rounded-lg overflow-y-auto" style={{ maxHeight: '96px', minHeight: '32px', wordBreak: 'break-word' }}>
+                            {editingEntry.lessons || <span className="text-gray-400">No lessons recorded</span>}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                          <div className="w-full px-3 py-2 text-sm text-gray-900 bg-gray-100 rounded-lg overflow-y-auto" style={{ maxHeight: '96px', minHeight: '32px', wordBreak: 'break-word' }}>
+                            {editingEntry.notes || <span className="text-gray-400">No notes recorded</span>}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Trade Images</label>
+                          <div className="flex space-x-5 overflow-x-auto py-2">
+                            {editingEntry?.images?.length === 0 && (
+                              <span className="text-gray-400 text-base flex items-center">No images uploaded</span>
+                            )}
+                            {editingEntry?.images?.map((img, idx) => (
+                              <div key={idx} className="relative w-[160px] h-[110px] rounded-lg shadow border overflow-hidden group flex-shrink-0">
+                                <img
+                                  src={img}
+                                  alt={`Trade Image ${idx + 1}`}
+                                  className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => {
+                                    setSelectedImage({ preview: img, name: `Trade Image ${idx + 1}` })
+                                    setCurrentImageIndex(idx)
+                                    setScale(1)
+                                    setPosition({ x: 0, y: 0 })
+                                    setIsPreviewOpen(true)
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-                <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsEditing(false)}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => setIsEditing(false)}
-                    className="w-full sm:w-auto"
-                  >
-                    Save Changes
-                  </Button>
-                </DialogFooter>
+                    <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsViewMode(false)
+                          setIsEditing(false)
+                          setEditingEntry(null)
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        Close
+                      </Button>
+                      <Button
+                        onClick={handleStartEdit}
+                        className="w-full sm:w-auto"
+                      >
+                        Edit Trade Entry
+                      </Button>
+                    </DialogFooter>
+                  </>
+                ) : (
+                  // Edit Mode Content
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Setup
+                          </label>
+                          <SetupInput
+                            value={editingEntry.setup}
+                            onChange={(value) => handleSaveEdit({ ...editingEntry, setup: value })}
+                            className="w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Coin
+                          </label>
+                          <CoinInput
+                            value={editingEntry.coin}
+                            onChange={(value) => handleSaveEdit({ ...editingEntry, coin: value })}
+                            className="w-full"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            P&L ($)
+                          </label>
+                          <input
+                            type="number"
+                            value={editingEntry.pnl}
+                            onChange={(e) => handleSaveEdit({ ...editingEntry, pnl: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Outcome
+                          </label>
+                          <select
+                            value={editingEntry.outcome}
+                            onChange={(e) => handleSaveEdit({ ...editingEntry, outcome: e.target.value as 'win' | 'loss' })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="win">Win</option>
+                            <option value="loss">Loss</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Mood
+                          </label>
+                          <select
+                            value={editingEntry.mood || ''}
+                            onChange={(e) => handleSaveEdit({ ...editingEntry, mood: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="great">Great</option>
+                            <option value="good">Good</option>
+                            <option value="neutral">Neutral</option>
+                            <option value="bad">Bad</option>
+                            <option value="terrible">Terrible</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Trade Link <span className="text-gray-400">(optional)</span>
+                          </label>
+                          <input
+                            type="url"
+                            value={editingEntry.link || ''}
+                            onChange={(e) => handleSaveEdit({ ...editingEntry, link: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter trade link (e.g. chart, analysis, etc.)"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Lessons Learned
+                          </label>
+                          <textarea
+                            value={editingEntry.lessons || ''}
+                            onChange={(e) => handleSaveEdit({ ...editingEntry, lessons: e.target.value })}
+                            className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Notes
+                          </label>
+                          <textarea
+                            value={editingEntry.notes || ''}
+                            onChange={(e) => handleSaveEdit({ ...editingEntry, notes: e.target.value })}
+                            className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Trade Images
+                          </label>
+                          <div className="flex space-x-5 overflow-x-auto py-2">
+                            {editingEntry?.images?.length === 0 && (
+                              <span className="text-gray-400 text-base flex items-center">No photo uploaded</span>
+                            )}
+                            {editingEntry?.images?.map((img, idx) => (
+                              <div key={idx} className="relative w-[160px] h-[110px] rounded-lg shadow border overflow-hidden group flex-shrink-0">
+                                <img
+                                  src={img}
+                                  alt={`Trade Image ${idx + 1}`}
+                                  className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => {
+                                    setSelectedImage({ preview: img, name: `Trade Image ${idx + 1}` })
+                                    setCurrentImageIndex(idx)
+                                    setScale(1)
+                                    setPosition({ x: 0, y: 0 })
+                                    setIsPreviewOpen(true)
+                                  }}
+                                />
+                                <button
+                                  onClick={e => { e.stopPropagation(); handleRemoveImage(idx); }}
+                                  className="absolute top-2 right-2 bg-white bg-opacity-90 rounded-full p-1.5 hover:bg-red-500 hover:text-white transition text-xl shadow"
+                                  title="Delete"
+                                >×</button>
+                              </div>
+                            ))}
+                            <label
+                              className={
+                                `flex items-center justify-center w-[160px] h-[110px] border-2 border-dashed rounded-lg cursor-pointer transition-colors flex-shrink-0 ` +
+                                (isDraggingUpload
+                                  ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30'
+                                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500')
+                              }
+                              onDragEnter={handleDragEnter}
+                              onDragLeave={handleDragLeave}
+                              onDragOver={handleDragOver}
+                              onDrop={handleDrop}
+                            >
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={handleFileChange}
+                                className="hidden"
+                              />
+                              <span className="text-lg text-gray-500 dark:text-gray-400 text-center">
+                                +<br />Upload or drag & drop images
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsEditing(false)
+                          setIsViewMode(false)
+                          setEditingEntry(null)
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setIsEditing(false)
+                          setIsViewMode(false)
+                          setEditingEntry(null)
+                        }}
+                        className="w-full sm:w-auto"
+                      >
+                        Save Changes
+                      </Button>
+                    </DialogFooter>
+                  </>
+                )}
               </>
             )}
           </DialogContent>
