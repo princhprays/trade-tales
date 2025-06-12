@@ -707,7 +707,7 @@ export function Calendar(): JSX.Element {
 
       {/* Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl bg-white dark:bg-gray-800">
+        <DialogContent className="w-[95vw] xs:w-[90vw] sm:max-w-xl md:max-w-2xl p-4 sm:p-6 overflow-y-auto max-h-[90vh] bg-white dark:bg-gray-800">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
               {selectedDate ? format(new Date(selectedDate), 'MMMM d, yyyy') : ''}
