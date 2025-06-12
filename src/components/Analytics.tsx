@@ -210,13 +210,16 @@ function SetupPerformanceTable({ entries }: { entries: TradeEntry[] }) {
   const [showAll, setShowAll] = useState(false);
   // Calculate setup stats
   const setupStats = entries.reduce((acc, entry) => {
-    const setup = typeof entry.setup === 'string' ? entry.setup : (Array.isArray(entry.setup) ? entry.setup.join(', ') : String(entry.setup));
-    if (!acc[setup]) {
-      acc[setup] = { wins: 0, total: 0, pnl: 0 };
-    }
-    acc[setup].total++;
-    if (entry.outcome === 'win') acc[setup].wins++;
-    acc[setup].pnl += entry.pnl;
+    const setups = Array.isArray(entry.setup) ? entry.setup : [entry.setup];
+    setups.forEach(setup => {
+      if (!setup) return;
+      if (!acc[setup]) {
+        acc[setup] = { wins: 0, total: 0, pnl: 0 };
+      }
+      acc[setup].total++;
+      if (entry.outcome === 'win') acc[setup].wins++;
+      acc[setup].pnl += entry.pnl;
+    });
     return acc;
   }, {} as Record<string, { wins: number; total: number; pnl: number }>);
 
@@ -968,13 +971,16 @@ export function Analytics() {
   // Calculate setup performance
   const setupPerformance = useMemo(() => {
     const setupStats = entries.reduce((acc, entry) => {
-      const setup = typeof entry.setup === 'string' ? entry.setup : (Array.isArray(entry.setup) ? entry.setup.join(', ') : String(entry.setup));
-      if (!acc[setup]) {
-        acc[setup] = { wins: 0, total: 0, pnl: 0 };
-      }
-      acc[setup].total++;
-      if (entry.outcome === 'win') acc[setup].wins++;
-      acc[setup].pnl += entry.pnl;
+      const setups = Array.isArray(entry.setup) ? entry.setup : [entry.setup];
+      setups.forEach(setup => {
+        if (!setup) return;
+        if (!acc[setup]) {
+          acc[setup] = { wins: 0, total: 0, pnl: 0 };
+        }
+        acc[setup].total++;
+        if (entry.outcome === 'win') acc[setup].wins++;
+        acc[setup].pnl += entry.pnl;
+      });
       return acc;
     }, {} as Record<string, { wins: number; total: number; pnl: number }>);
 
