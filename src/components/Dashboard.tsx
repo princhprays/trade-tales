@@ -13,6 +13,7 @@ import { normalizeTradeName } from '../store/tradeStore'
 import { DateRangePicker } from './ui/date-range-picker'
 import type { DateRange } from 'react-day-picker'
 import { ImageViewer } from './ui/image-viewer'
+import { Search } from 'lucide-react'
 
 const WINLOSS_COLORS = ['#10B981', '#EF4444'] // Modern green and red
 const CHART_COLORS = {
@@ -109,7 +110,7 @@ export function getBestTradeByReturn(trades) {
   }, null)
 }
 
-export function Dashboard() {
+export function Dashboard({ onNavigate }: { onNavigate?: (page: string, fromComponent?: string) => void }) {
   const { entries, settings, updateSettings } = useTradeStore()
   const [isEditingCapital, setIsEditingCapital] = useState(false)
   const [newCapital, setNewCapital] = useState(settings?.initialCapital?.toString() || '0')
@@ -219,11 +220,17 @@ export function Dashboard() {
     setFormData({ ...formData, images: newImages });
   };
 
+  const handleNavigate = (page: string) => {
+    if (onNavigate) {
+      onNavigate(page, 'dashboard')
+    }
+  };
+
   return (
     <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-[95vw] xs:max-w-[90vw] sm:max-w-[85vw] md:max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 xs:gap-4 mb-4 xs:mb-6 sm:mb-8">
-          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Trading Analytics</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
         </div>
 
         {/* Key Metrics */}
@@ -328,8 +335,8 @@ export function Dashboard() {
             </CardHeader>
             <CardContent className="h-[250px] xs:h-[300px] sm:h-[400px]">
               {filteredEntries.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs xs:text-sm sm:text-base">
-                  No trading data available
+                <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-lg font-medium">
+                  No data available yet
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -375,8 +382,8 @@ export function Dashboard() {
             </CardHeader>
             <CardContent className="h-[250px] xs:h-[300px] sm:h-[350px] md:h-[380px] lg:h-[400px]">
               {filteredEntries.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs xs:text-sm sm:text-base">
-                  No trading data available
+                <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-lg font-medium">
+                  No data available yet
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -446,6 +453,7 @@ export function Dashboard() {
                   setModalTrades={setModalTrades}
                   modalSetup={modalSetup}
                   setModalSetup={setModalSetup}
+                  onNavigate={onNavigate}
                 />
               </TabsContent>
               <TabsContent value="weekly">
@@ -458,6 +466,7 @@ export function Dashboard() {
                   setModalTrades={setModalTrades}
                   modalSetup={modalSetup}
                   setModalSetup={setModalSetup}
+                  onNavigate={onNavigate}
                 />
               </TabsContent>
               <TabsContent value="monthly">
@@ -470,6 +479,7 @@ export function Dashboard() {
                   setModalTrades={setModalTrades}
                   modalSetup={modalSetup}
                   setModalSetup={setModalSetup}
+                  onNavigate={onNavigate}
                 />
               </TabsContent>
               <TabsContent value="yearly">
@@ -482,6 +492,7 @@ export function Dashboard() {
                   setModalTrades={setModalTrades}
                   modalSetup={modalSetup}
                   setModalSetup={setModalSetup}
+                  onNavigate={onNavigate}
                 />
               </TabsContent>
             </Tabs>
@@ -751,7 +762,7 @@ function getMostTradedSetupInfo(filtered: any[]): { setup: string; count: number
   };
 }
 
-function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesModal, modalTrades, setModalTrades, modalSetup, setModalSetup }: {
+function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesModal, modalTrades, setModalTrades, modalSetup, setModalSetup, onNavigate }: {
   entries: any[];
   period:  'day' |'week' | 'month' | 'year' ;
   showTradesModal: boolean;
@@ -760,6 +771,7 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
   setModalTrades: (trades: any[]) => void;
   modalSetup: string;
   setModalSetup: (setup: string) => void;
+  onNavigate?: (page: string, fromComponent?: string) => void;
 }) {
   // Get current date
   const now = new Date()
@@ -932,8 +944,27 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
             </div>
             <div className="h-[200px] xs:h-[250px] sm:h-[300px]">
               {equityCurve.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs xs:text-sm">
-                  No trading data available
+                <div className="h-full flex flex-col items-center justify-center py-8 px-4">
+                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                    <Search className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    {entries.length === 0 ? 'No trade entries yet' : 'No entries match your filters'}
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-4">
+                    {entries.length === 0 
+                      ? 'Start tracking your trades by adding your first entry. This will help you analyze your performance and improve your trading strategy.'
+                      : 'Try adjusting your date range to see more results.'
+                    }
+                  </p>
+                  {entries.length === 0 && (
+                    <Button 
+                      className="mt-4"
+                      onClick={() => onNavigate?.('calendar', 'dashboard')}
+                    >
+                      Add Your First Trade
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">

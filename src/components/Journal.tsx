@@ -42,7 +42,7 @@ interface FilterState {
 }
 
 interface JournalProps {
-  onNavigate?: (page: string) => void
+  onNavigate?: (page: string, fromComponent?: string) => void
 }
 
 const ITEMS_PER_PAGE = 10
@@ -487,7 +487,7 @@ export function Journal({ onNavigate }: JournalProps) {
                   className="mt-4"
                   onClick={() => {
                     if (onNavigate) {
-                      onNavigate('calendar')
+                      onNavigate('calendar', 'journal')
                     }
                   }}
                 >

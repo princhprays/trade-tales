@@ -68,7 +68,7 @@ interface TradeEntryForm {
   link: string
 }
 
-export function Calendar(): JSX.Element {
+export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Element {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -100,6 +100,19 @@ export function Calendar(): JSX.Element {
   const [charCount, setCharCount] = useState({ lessons: 0, notes: 0 })
 
   const imageContainerRef = useRef<HTMLDivElement>(null)
+  const hasAutoOpened = useRef(false)
+
+  // Auto-open dialog for today's date when autoOpen is true (only once)
+  useEffect(() => {
+    if (autoOpen && !hasAutoOpened.current) {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      handleDateClick(today)
+      hasAutoOpened.current = true
+    } else if (!autoOpen) {
+      // Reset the flag when autoOpen becomes false
+      hasAutoOpened.current = false
+    }
+  }, [autoOpen]) // Only depend on autoOpen, not on handleDateClick
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
