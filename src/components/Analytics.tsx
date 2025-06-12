@@ -443,11 +443,7 @@ function AdvancedMetricsCards({ entries }: { entries: TradeEntry[] }) {
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Avg Loss:</span>
-              <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                {entries.filter(e => e.outcome === 'loss').length > 0 
-                  ? (entries.filter(e => e.outcome === 'loss').reduce((sum, e) => sum + e.pnl, 0) / entries.filter(e => e.outcome === 'loss').length).toFixed(2)
-                  : '0.00'}%
-              </span>
+              <span className="text-sm font-medium text-red-500">{avgLoss < 0 ? '-' : ''}${Math.abs(avgLoss).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             </div>
           </div>
           <CardDescription>
@@ -689,11 +685,33 @@ function AnalyticsSummaryCards({ entries }: { entries: TradeEntry[] }) {
 // --- END NEW ---
 
 // --- NEW: Bottom Metrics Cards ---
+function getEquityCurve(entries: TradeEntry[], initial: number = 0): number[] {
+  let curve = [initial];
+  entries.forEach((e: TradeEntry) => {
+    curve.push(curve[curve.length - 1] + e.pnl);
+  });
+  return curve;
+}
+
+function getMaxDrawdown(curve: number[]): number {
+  let max = curve[0], maxDrawdown = 0;
+  for (let v of curve) {
+    if (v > max) max = v;
+    let drawdown = v - max;
+    if (drawdown < maxDrawdown) maxDrawdown = drawdown;
+  }
+  return maxDrawdown;
+}
+
 function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
   // Risk Metrics
-  const maxDrawdown = entries.length > 0 ? Math.min(...entries.map(e => e.pnl)) : 0;
-  const maxWin = entries.length > 0 ? Math.max(...entries.map(e => e.pnl)) : 0;
-  const riskReward = Math.abs(maxWin) / Math.abs(maxDrawdown || 1);
+  const equityCurve = getEquityCurve(entries, 0);
+  const maxDrawdown = getMaxDrawdown(equityCurve);
+  const wins = entries.filter(e => e.outcome === 'win');
+  const losses = entries.filter(e => e.outcome === 'loss');
+  const avgWin = wins.length > 0 ? wins.reduce((sum, e) => sum + e.pnl, 0) / wins.length : 0;
+  const avgLoss = losses.length > 0 ? losses.reduce((sum, e) => sum + e.pnl, 0) / losses.length : 0;
+  const riskReward = avgLoss !== 0 ? Math.abs(avgWin / avgLoss) : 0;
   // Consecutive Wins
   let consecutiveWins = 0, tempWins = 0;
   entries.forEach(e => {
@@ -705,10 +723,6 @@ function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
     }
   });
   // Trade Quality
-  const wins = entries.filter(e => e.outcome === 'win');
-  const losses = entries.filter(e => e.outcome === 'loss');
-  const avgWin = wins.length > 0 ? wins.reduce((sum, e) => sum + e.pnl, 0) / wins.length : 0;
-  const avgLoss = losses.length > 0 ? losses.reduce((sum, e) => sum + e.pnl, 0) / losses.length : 0;
   const profitFactor = calculateProfitFactor(entries);
   // Performance Score
   const sharpeRatio = calculateSharpeRatio(entries) || 0;
@@ -727,7 +741,7 @@ function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">Max Drawdown</span>
-            <span className="font-semibold text-red-500">${maxDrawdown < 0 ? '-' : ''}${Math.abs(maxDrawdown).toLocaleString()}</span>
+            <span className="font-semibold text-red-500">{maxDrawdown < 0 ? '-' : ''}${Math.abs(maxDrawdown).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">Risk/Reward</span>
@@ -747,12 +761,12 @@ function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
         </div>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-gray-700 dark:text-gray-300">Avg Winner</span>
+            <span className="text-gray-700 dark:text-gray-300">Avg Win</span>
             <span className="font-semibold text-green-600">${avgWin >= 0 ? '' : '-'}{Math.abs(avgWin).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-gray-700 dark:text-gray-300">Avg Loser</span>
-            <span className="font-semibold text-red-500">${avgLoss < 0 ? '-' : ''}{Math.abs(avgLoss).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            <span className="text-gray-700 dark:text-gray-300">Avg Loss</span>
+            <span className="font-semibold text-red-500">{avgLoss < 0 ? '-' : ''}${Math.abs(avgLoss).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">Profit Factor</span>
