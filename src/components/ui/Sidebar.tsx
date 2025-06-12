@@ -27,24 +27,26 @@ export function Sidebar({ active, onChange }: SidebarProps) {
 
   return (
     <aside
-      className={`h-full min-h-0 min-w-0 bg-white dark:bg-gray-800 border-r dark:border-gray-700 transition-all duration-200 flex flex-col ${collapsed ? 'w-16' : 'w-56'} shadow-sm`}
+      className={`h-full min-h-0 min-w-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-200 flex flex-col ${collapsed ? 'w-16' : 'w-56'} shadow-sm relative z-10`}
     >
-      <div className="flex items-center justify-between h-16 px-4 border-b dark:border-gray-700">
-        {!collapsed && <span className="font-bold text-lg dark:text-white">TradeTales</span>}
-        <button
-          className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300"
-          onClick={() => setCollapsed((c) => !c)}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
-        </button>
+      <div className={`flex items-center justify-between h-16 border-b border-gray-200 dark:border-gray-700 ${collapsed ? 'px-0 justify-center' : 'px-4'}`}>
+        {!collapsed && <span className="font-bold text-lg text-gray-900 dark:text-white">TradeTales</span>}
+        <div className={`flex items-center gap-2 ${collapsed ? 'justify-center w-full' : ''}`}>
+          <button
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
+          </button>
+        </div>
       </div>
       <nav className="flex-1 py-4">
         {navItems.map((item) => (
           <button
             key={item.value}
-            className={`flex items-center gap-3 w-full px-4 py-2 my-1 rounded transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-              active === item.value ? 'bg-gray-100 dark:bg-gray-700 font-semibold' : ''
+            className={`flex items-center gap-3 w-full px-4 py-2 my-1 rounded-lg transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              active === item.value ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold' : ''
             } ${collapsed ? 'justify-center px-2' : ''}`}
             onClick={() => onChange(item.value)}
           >

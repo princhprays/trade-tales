@@ -1,108 +1,101 @@
 import { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { useTradeStore } from '@/store/tradeStore'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay } from 'date-fns'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2 } from 'lucide-react'
+import { CoinInput } from '@/components/ui/coin-input'
+import { SetupInput } from '@/components/ui/setup-input'
+import type { JSX } from 'react'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 // Professional color scheme
 const COLORS = {
   background: {
-    primary: '#FFFFFF',
-    secondary: '#F9FAFB',
-    hover: '#F3F4F6',
-    today: '#EFF6FF',
-    selected: '#DBEAFE',
-    dark: {
-      primary: '#1F2937',
-      secondary: '#111827',
-      hover: '#374151',
-      today: '#1E40AF',
-      selected: '#1E3A8A'
-    }
+    primary: 'bg-white dark:bg-gray-900',
+    secondary: 'bg-gray-50 dark:bg-gray-800',
+    hover: 'hover:bg-gray-100 dark:hover:bg-gray-700',
+    today: 'bg-blue-50 dark:bg-blue-900/20',
+    selected: 'bg-blue-100 dark:bg-blue-800/30'
   },
   text: {
-    primary: '#111827',
-    secondary: '#6B7280',
-    muted: '#9CA3AF',
-    dark: {
-      primary: '#F9FAFB',
-      secondary: '#E5E7EB',
-      muted: '#9CA3AF'
-    }
+    primary: 'text-gray-900 dark:text-white',
+    secondary: 'text-gray-600 dark:text-gray-300',
+    muted: 'text-gray-500 dark:text-gray-400'
   },
   trade: {
     profit: {
-      light: '#D1FAE5',
-      medium: '#10B981',
-      dark: '#059669',
-      darkMode: {
-        light: '#064E3B',
-        medium: '#059669',
-        dark: '#047857'
-      }
+      light: 'bg-green-50 dark:bg-green-900/20',
+      medium: 'text-green-600 dark:text-green-400',
+      dark: 'text-green-700 dark:text-green-300'
     },
     loss: {
-      light: '#FEE2E2',
-      medium: '#EF4444',
-      dark: '#DC2626',
-      darkMode: {
-        light: '#7F1D1D',
-        medium: '#DC2626',
-        dark: '#B91C1C'
-      }
+      light: 'bg-red-50 dark:bg-red-900/20',
+      medium: 'text-red-600 dark:text-red-400',
+      dark: 'text-red-700 dark:text-red-300'
     }
   },
   border: {
-    light: '#E5E7EB',
-    medium: '#D1D5DB',
-    dark: {
-      light: '#374151',
-      medium: '#4B5563'
-    }
+    light: 'border-gray-200 dark:border-gray-700',
+    medium: 'border-gray-300 dark:border-gray-600'
   }
 }
 
-interface TradeEntryForm {
-  lessons: string
-  setup: string
-  pnl: number | string
-  outcome: 'win' | 'loss'
-  tags: string[]
-  mood: string
-  notes?: string
-  images?: Array<{
-    name: string
-    preview: string
-    data: string
-  }>
-  lastSaved?: string
-  positionSize?: number | string
-  leverage?: number | string
-  link?: string
-}
-
-// Add form validation interface
 interface FormErrors {
   setup?: string
+  coin?: string
   pnl?: string
   lessons?: string
   tags?: string
 }
 
-export function Calendar() {
+interface TradeEntry {
+  id: string
+  date: string
+  lessons: string
+  setup: string
+  coin: string
+  pnl: number
+  outcome: 'win' | 'loss'
+  tags: string[]
+  mood: string
+  notes: string
+  images: string[]
+  lastSaved?: string
+  positionSize?: number
+  leverage?: number
+  link: string
+}
+
+interface TradeEntryForm {
+  lessons: string
+  setup: string[]
+  coin: string
+  pnl: number | null
+  outcome: 'win' | 'loss'
+  tags: string[]
+  mood: string
+  notes: string
+  images: { name: string; preview: string; data: string }[]
+  lastSaved?: string
+  positionSize: string
+  leverage: string
+  link: string
+}
+
+export function Calendar(): JSX.Element {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isViewMode, setIsViewMode] = useState(false)
   const [formData, setFormData] = useState<TradeEntryForm>({
     lessons: '',
-    setup: '',
-    pnl: 0,
+    setup: [],
+    coin: '',
+    pnl: null,
     outcome: 'win',
     tags: [],
     mood: 'neutral',
@@ -123,6 +116,8 @@ export function Calendar() {
   const [isSaving, setIsSaving] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [charCount, setCharCount] = useState({ lessons: 0, notes: 0 })
+
+  const imageContainerRef = useRef<HTMLDivElement>(null)
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -150,8 +145,9 @@ export function Calendar() {
       const entry = dayEntries[0]
       setFormData({
         lessons: entry.lessons || '',
-        setup: entry.setup || '',
-        pnl: entry.pnl || 0,
+        setup: Array.isArray(entry.setup) ? entry.setup : (entry.setup ? [entry.setup] : []),
+        coin: entry.coin || '',
+        pnl: entry.pnl || null,
         outcome: entry.outcome || 'win',
         tags: entry.tags || [],
         mood: entry.mood || 'neutral',
@@ -162,8 +158,8 @@ export function Calendar() {
           data: img
         })) || [],
         lastSaved: entry.lastSaved || new Date().toISOString(),
-        positionSize: entry.positionSize || '',
-        leverage: entry.leverage || '',
+        positionSize: entry.positionSize?.toString() || '',
+        leverage: entry.leverage?.toString() || '',
         link: entry.link || '',
       })
       setIsEditing(false)
@@ -171,8 +167,9 @@ export function Calendar() {
     } else {
       setFormData({
         lessons: '',
-        setup: '',
-        pnl: 0,
+        setup: [],
+        coin: '',
+        pnl: null,
         outcome: 'win',
         tags: [],
         mood: 'neutral',
@@ -196,8 +193,9 @@ export function Calendar() {
       setSelectedTradeIndex(index)
       setFormData({
         lessons: entry.lessons || '',
-        setup: entry.setup || '',
-        pnl: entry.pnl || 0,
+        setup: Array.isArray(entry.setup) ? entry.setup : (entry.setup ? [entry.setup] : []),
+        coin: entry.coin || '',
+        pnl: entry.pnl || null,
         outcome: entry.outcome || 'win',
         tags: entry.tags || [],
         mood: entry.mood || 'neutral',
@@ -208,8 +206,8 @@ export function Calendar() {
           data: img
         })) || [],
         lastSaved: entry.lastSaved || new Date().toISOString(),
-        positionSize: entry.positionSize || '',
-        leverage: entry.leverage || '',
+        positionSize: entry.positionSize?.toString() || '',
+        leverage: entry.leverage?.toString() || '',
         link: entry.link || '',
       })
       setIsViewMode(true)
@@ -228,8 +226,9 @@ export function Calendar() {
     // Reset form for new trade while keeping the same date
     setFormData({
       lessons: '',
-      setup: '',
-      pnl: 0,
+      setup: [],
+      coin: '',
+      pnl: null,
       outcome: 'win',
       tags: [],
       mood: 'neutral',
@@ -241,6 +240,80 @@ export function Calendar() {
     })
     setIsEditing(false)
     setIsViewMode(false)
+  }
+
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'))
+    
+    if (files.length === 0) {
+      toast({
+        title: 'Invalid files',
+        description: 'Please drop only image files',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Validate file size (5MB limit)
+    const validFiles = files.filter(file => file.size <= 5 * 1024 * 1024)
+    
+    if (validFiles.length !== files.length) {
+      toast({
+        title: 'File too large',
+        description: 'Some files were skipped because they exceed 5MB limit',
+        variant: 'destructive'
+      })
+    }
+
+    // Process valid files
+    const processedFiles = await Promise.all(
+      validFiles.map(async (file) => {
+        return new Promise<{ name: string; preview: string; data: string }>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            resolve({
+              name: file.name,
+              preview: URL.createObjectURL(file),
+              data: reader.result as string
+            })
+          }
+          reader.readAsDataURL(file)
+        })
+      })
+    )
+
+    setFormData(prev => ({
+      ...prev,
+      images: [...(prev.images || []), ...processedFiles]
+    }))
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -289,16 +362,119 @@ export function Calendar() {
     }))
   }
 
+  const handleImageClick = (image: { preview: string; name: string }, index: number) => {
+    setSelectedImage(image)
+    setCurrentImageIndex(index)
+    setScale(1)
+    setPosition({ x: 0, y: 0 })
+    setIsPreviewOpen(true)
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (scale > 1) {
+      setIsDragging(true)
+      setDragStart({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+      })
+    }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && scale > 1) {
+      e.preventDefault()
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    const newScale = Math.min(Math.max(scale * delta, 0.5), 3)
+    
+    // Calculate the mouse position relative to the image
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    
+    // Calculate the new position to zoom towards the mouse
+    const newPosition = {
+      x: position.x - (x - position.x) * (delta - 1),
+      y: position.y - (y - position.y) * (delta - 1)
+    }
+    
+    setScale(newScale)
+    setPosition(newPosition)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isPreviewOpen) return
+
+    switch (e.key) {
+      case 'ArrowLeft':
+        if (currentImageIndex > 0) {
+          const prevImage = formData.images?.[currentImageIndex - 1]
+          if (prevImage) {
+            setSelectedImage(prevImage)
+            setCurrentImageIndex(currentImageIndex - 1)
+            setScale(1)
+            setPosition({ x: 0, y: 0 })
+          }
+        }
+        break
+      case 'ArrowRight':
+        if (formData.images && currentImageIndex < formData.images.length - 1) {
+          const nextImage = formData.images[currentImageIndex + 1]
+          if (nextImage) {
+            setSelectedImage(nextImage)
+            setCurrentImageIndex(currentImageIndex + 1)
+            setScale(1)
+            setPosition({ x: 0, y: 0 })
+          }
+        }
+        break
+      case 'Escape':
+        setIsPreviewOpen(false)
+        break
+    }
+  }
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown as any)
+    return () => window.removeEventListener('keydown', handleKeyDown as any)
+  }, [isPreviewOpen, currentImageIndex, formData.images])
+
+  useEffect(() => {
+    const imageContainer = imageContainerRef.current
+    if (imageContainer) {
+      imageContainer.addEventListener('wheel', handleWheel as any, { passive: false })
+      return () => {
+        imageContainer.removeEventListener('wheel', handleWheel as any)
+      }
+    }
+  }, [handleWheel])
+
   // Add validation function
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
     
-    if (!formData.setup.trim()) {
-      newErrors.setup = 'Setup is required'
+    if (!formData.setup.length) {
+      newErrors.setup = 'At least one setup is required'
     }
     
-    if (formData.pnl === '' || isNaN(Number(formData.pnl))) {
-      newErrors.pnl = 'Valid P&L ($) is required'
+    if (!formData.coin.trim()) {
+      newErrors.coin = 'Coin is required'
+    }
+
+    if (formData.pnl === null) {
+      newErrors.pnl = 'P&L is required'
     }
     
     if (formData.lessons.length > 500) {
@@ -315,90 +491,54 @@ export function Calendar() {
 
   // Enhanced save handler with validation and loading state
   const handleSaveEntry = async () => {
+    if (!selectedDate) return
+
+    console.log('Calendar: handleSaveEntry - formData.coin:', formData.coin);
+    console.log('Calendar: handleSaveEntry - formData.setup:', formData.setup);
+
+    if (!validateForm()) {
+      return // Stop if validation fails
+    }
+
     setIsSaving(true)
-    setErrors({})
-
-    // Validate form
-    const newErrors: FormErrors = {}
-    if (!formData.setup.trim()) {
-      newErrors.setup = 'Setup is required'
-    }
-    if (formData.pnl === '' || isNaN(Number(formData.pnl))) {
-      newErrors.pnl = 'Valid P&L ($) is required'
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      setIsSaving(false)
-      return
-    }
-
     try {
-      if (selectedDate) {
-        // Convert images to the format expected by the store
-        const images = formData.images?.map(img => img.data) || []
-
-        const rawPnl = Number(formData.pnl);
-        let pnl = rawPnl;
-        if (formData.outcome === 'loss' && rawPnl > 0) {
-          pnl = -rawPnl;
-        } else if (formData.outcome === 'win' && rawPnl < 0) {
-          pnl = Math.abs(rawPnl);
-        }
-
-        const entryData = {
-          date: selectedDate,
-          lessons: formData.lessons,
-          setup: formData.setup,
-          pnl: pnl,
-          outcome: formData.outcome,
-          tags: formData.tags,
-          mood: formData.mood,
-          notes: formData.notes || '',
-          images: images,
-          lastSaved: new Date().toISOString(),
-          positionSize: formData.positionSize ? Number(formData.positionSize) : undefined,
-          leverage: formData.leverage ? Number(formData.leverage) : undefined,
-          link: formData.link || '',
-        }
-
-        if (isEditing) {
-          const dayEntries = entries.filter(entry => entry.date === selectedDate)
-          if (dayEntries[selectedTradeIndex]) {
-            updateEntry(dayEntries[selectedTradeIndex].id, entryData)
-          }
-        } else {
-          addEntry(entryData)
-        }
-
-        toast({
-          title: isEditing ? 'Trade Updated' : 'Trade Added',
-          description: `Successfully ${isEditing ? 'updated' : 'added'} trade entry`,
-        })
-
-        setIsDialogOpen(false)
-        setFormData({
-          lessons: '',
-          setup: '',
-          pnl: 0,
-          outcome: 'win',
-          tags: [],
-          mood: 'neutral',
-          notes: '',
-          images: [],
-          positionSize: '',
-          leverage: '',
-          link: '',
-        })
-        setIsEditing(false)
-        setSelectedTradeIndex(0)
+      const entry = {
+        date: selectedDate,
+        lessons: formData.lessons,
+        setup: formData.setup,
+        coin: formData.coin,
+        pnl: formData.pnl !== null ? formData.pnl : 0,
+        outcome: formData.outcome,
+        tags: formData.tags,
+        mood: formData.mood,
+        notes: formData.notes,
+        images: formData.images.map(img => img.data),
+        lastSaved: new Date().toISOString(),
+        positionSize: formData.positionSize ? parseFloat(formData.positionSize) : undefined,
+        leverage: formData.leverage ? parseFloat(formData.leverage) : undefined,
+        link: formData.link,
       }
+
+      if (isEditing) {
+        const dayEntries = entries.filter(e => e.date === selectedDate)
+        if (dayEntries[selectedTradeIndex]) {
+          updateEntry(dayEntries[selectedTradeIndex].id, entry)
+        }
+      } else {
+        addEntry(entry)
+      }
+
+      setIsDialogOpen(false)
+      toast({
+        title: isEditing ? 'Trade Updated' : 'Trade Saved',
+        description: isEditing ? 'Your trade has been updated successfully.' : 'Your trade has been saved successfully.',
+      })
     } catch (error) {
-      console.error('Error saving entry:', error)
+      console.error('Error saving trade:', error)
       toast({
         title: 'Error',
-        description: 'Failed to save trade entry',
-        variant: 'destructive'
+        description: 'There was an error saving your trade. Please try again.',
+        variant: 'destructive',
       })
     } finally {
       setIsSaving(false)
@@ -413,9 +553,16 @@ export function Calendar() {
 
   // Format P&L input
   const handlePnLChange = (value: string) => {
-    // Remove any non-numeric characters except decimal point
-    const numericValue = value.replace(/[^0-9.-]/g, '')
-    setFormData(prev => ({ ...prev, pnl: numericValue }))
+    if (value.trim() === '') {
+      setFormData(prev => ({ ...prev, pnl: null }))
+      return
+    }
+    const numValue = parseFloat(value)
+    if (!isNaN(numValue)) {
+      setFormData(prev => ({ ...prev, pnl: numValue }))
+    } else {
+      setFormData(prev => ({ ...prev, pnl: null }))
+    }
   }
 
   const handleDeleteEntry = () => {
@@ -431,8 +578,9 @@ export function Calendar() {
           setIsDialogOpen(false)
           setFormData({
             lessons: '',
-            setup: '',
-            pnl: 0,
+            setup: [],
+            coin: '',
+            pnl: null,
             outcome: 'win',
             tags: [],
             mood: 'neutral',
@@ -473,282 +621,150 @@ export function Calendar() {
     current.pnl < worst.pnl ? current : worst
   ) : null
 
-  // Add this new function
-  const handleImageClick = (image: { preview: string; name: string }) => {
-    setSelectedImage(image)
-  }
-
   const setupInputRef = useRef<HTMLInputElement>(null)
   const dummyRef = useRef<HTMLButtonElement>(null)
 
   return (
-    <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="max-w-[95vw] xs:max-w-[90vw] sm:max-w-[85vw] md:max-w-7xl mx-auto">
-        {/* Monthly Summary */}
-        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6">
-          <Card className="hover:shadow-md transition-shadow dark:bg-gray-800">
-            <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">Month P&L</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-xl xs:text-2xl sm:text-3xl font-bold ${monthPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {monthPnl >= 0 ? '+' : ''}{monthPnl.toFixed(2)}%
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow dark:bg-gray-800">
-            <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">Month Trades</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{monthTradeCount}</div>
-              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {monthWinCount} wins / {monthTradeCount - monthWinCount} losses
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow dark:bg-gray-800">
-            <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">Month Win Rate</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{monthWinRate.toFixed(1)}%</div>
-              <div className="text-xs xs:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Risk/Reward: {riskRewardRatio}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow dark:bg-gray-800">
-            <CardHeader className="pb-1 xs:pb-2">
-              <CardTitle className="text-xs xs:text-sm sm:text-base font-medium text-gray-500 dark:text-gray-400">Best/Worst Trade</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1 xs:space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Best:</span>
-                  <span className="text-base xs:text-lg font-bold text-green-600 dark:text-green-400">
-                    {bestTrade ? `${bestTrade.pnl >= 0 ? '+' : ''}${bestTrade.pnl.toFixed(2)}%` : '-'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Worst:</span>
-                  <span className="text-base xs:text-lg font-bold text-red-600 dark:text-red-400">
-                    {worstTrade ? `${worstTrade.pnl >= 0 ? '+' : ''}${worstTrade.pnl.toFixed(2)}%` : '-'}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+    <div className="p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trading Calendar</h1>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrevMonth}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+            >
+              ←
+            </button>
+            <span className="text-lg font-semibold text-gray-900 dark:text-white">
+              {format(currentDate, 'MMMM yyyy')}
+            </span>
+            <button
+              onClick={handleNextMonth}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+            >
+              →
+            </button>
+          </div>
         </div>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-1 xs:pb-2">
-            <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 xs:gap-4">
-              <CardTitle className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                {format(currentDate, 'MMMM yyyy')}
-              </CardTitle>
-              <div className="flex items-center gap-1 xs:gap-2">
-                <button
-                  onClick={handlePrevMonth}
-                  className="p-1.5 xs:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  ←
-                </button>
-                <button
-                  onClick={() => setCurrentDate(today)}
-                  className="px-2 xs:px-3 py-1 text-xs xs:text-sm sm:text-base text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  Today
-                </button>
-                <button
-                  onClick={handleNextMonth}
-                  className="p-1.5 xs:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  →
-                </button>
-              </div>
+        <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+          {WEEKDAYS.map(day => (
+            <div
+              key={day}
+              className="bg-gray-50 dark:bg-gray-800 p-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              {day}
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-              {WEEKDAYS.map(day => (
-                <div
-                  key={day}
-                  className="bg-gray-50 dark:bg-gray-800 p-1 xs:p-2 text-center text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400"
+          ))}
+          {calendarDays.map((day, i) => {
+            const dateStr = format(day, 'yyyy-MM-dd')
+            const dayEntries = entries.filter(entry => entry.date === dateStr)
+            const isCurrentMonth = isSameMonth(day, currentDate)
+            const isCurrentDay = isToday(day)
+
+            return (
+              <button
+                key={i}
+                onClick={() => handleDateClick(dateStr)}
+                className={`
+                  relative p-2 min-h-[100px] text-left transition-colors
+                  ${isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50'}
+                  ${isCurrentDay ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                  hover:bg-gray-50 dark:hover:bg-gray-700
+                  border border-gray-200 dark:border-gray-700
+                `}
+              >
+                <span
+                  className={`
+                    text-sm font-medium
+                    ${isCurrentMonth ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}
+                    ${isCurrentDay ? 'text-blue-600 dark:text-blue-400' : ''}
+                  `}
                 >
-                  {day}
-                </div>
-              ))}
-              {calendarDays.map((day, i) => {
-                const dateStr = format(day, 'yyyy-MM-dd')
-                const dayEntries = entries.filter(entry => entry.date === dateStr)
-                const isCurrentMonth = isSameMonth(day, currentDate)
-                const isCurrentDay = isToday(day)
-                const hasEntries = dayEntries.length > 0
-
-                // Calculate day statistics
-                const dayWinCount = dayEntries.filter(e => e.outcome === 'win').length
-                const dayLossCount = dayEntries.filter(e => e.outcome === 'loss').length
-                const dayTotalPnL = dayEntries.reduce((sum, entry) => sum + entry.pnl, 0)
-                const dayTotalWon = dayEntries
-                  .filter(e => e.outcome === 'win')
-                  .reduce((sum, entry) => sum + entry.pnl, 0)
-                const dayTotalLost = Math.abs(dayEntries
-                  .filter(e => e.outcome === 'loss')
-                  .reduce((sum, entry) => sum + entry.pnl, 0))
-
-                return (
-                  <div
-                    key={i}
-                    onClick={() => handleDateClick(dateStr)}
-                    className={`
-                      relative min-h-[60px] xs:min-h-[70px] sm:min-h-[80px] md:min-h-[100px] p-0.5 xs:p-1 sm:p-2
-                      ${isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}
-                      ${isCurrentDay ? 'bg-blue-50 dark:bg-blue-900/30' : ''}
-                      hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors
-                      group
-                    `}
-                  >
-                    <div className="flex items-center justify-between mb-0.5 xs:mb-1">
-                      <span className={`
-                        text-[10px] xs:text-xs sm:text-sm font-medium
-                        ${isCurrentMonth ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}
-                        ${isCurrentDay ? 'text-blue-600 dark:text-blue-400' : ''}
-                        group-hover:text-lg xs:group-hover:text-xl sm:group-hover:text-2xl
-                        group-hover:font-bold
-                        transition-all duration-200
-                      `}>
-                        {format(day, 'd')}
-                      </span>
-                    </div>
-                    {hasEntries && (
-                      <div className="space-y-0.5 xs:space-y-1">
-                        <div className={`
-                          text-[8px] xs:text-xs sm:text-sm font-medium
-                          ${dayTotalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}
-                          group-hover:text-sm xs:group-hover:text-base sm:group-hover:text-lg
-                          transition-all duration-200
-                        `}>
-                          Total: {dayTotalPnL >= 0 ? '+' : ''}{dayTotalPnL.toFixed(2)}%
-                        </div>
-                        <div className="text-[8px] xs:text-xs sm:text-sm text-green-600 dark:text-green-400 group-hover:text-sm xs:group-hover:text-base sm:group-hover:text-lg transition-all duration-200">
-                          Win: +{dayTotalWon.toFixed(2)}%
-                        </div>
-                        <div className="text-[8px] xs:text-xs sm:text-sm text-red-600 dark:text-red-400 group-hover:text-sm xs:group-hover:text-base sm:group-hover:text-lg transition-all duration-200">
-                          Lost: -{dayTotalLost.toFixed(2)}%
-                        </div>
-                        <div className="text-[8px] xs:text-xs sm:text-sm text-gray-600 dark:text-gray-300 group-hover:text-sm xs:group-hover:text-base sm:group-hover:text-lg transition-all duration-200">
-                          Trades: {dayEntries.length}
-                        </div>
+                  {format(day, 'd')}
+                </span>
+                {dayEntries.length > 0 && (
+                  <div className="mt-1 space-y-1">
+                    {dayEntries.map((entry, index) => (
+                      <div
+                        key={index}
+                        className={`
+                          text-xs p-1 rounded truncate
+                          ${entry.outcome === 'win' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'}
+                        `}
+                      >
+                        {entry.coin}: ${entry.pnl > 0 ? '+' : ''}{entry.pnl}
                       </div>
-                    )}
+                    ))}
                   </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent 
-            // @ts-expect-error initialFocus is supported by Radix Dialog but not in their types yet
-            initialFocus={isEditing ? dummyRef : setupInputRef}
-            className="w-[95vw] xs:w-[90vw] sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px] dark:bg-gray-800">
-            <button ref={dummyRef} tabIndex={0} aria-hidden="true" style={{position:'absolute',opacity:0,pointerEvents:'none',height:0,width:0}} />
-            <DialogHeader>
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-base xs:text-lg sm:text-xl font-semibold dark:text-white">
-                  {selectedDate ? format(new Date(selectedDate), 'MMMM d, yyyy') : ''}
-                </DialogTitle>
-                <div className="flex items-center gap-2">
-                  {isViewMode && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleTradeSelect(Math.max(0, selectedTradeIndex - 1))}
-                        disabled={selectedTradeIndex === 0}
-                        className="p-2 text-2xl font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                      >
-                        ←
-                      </button>
-                      <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">
-                        Trade {selectedTradeIndex + 1} of {entries.filter(entry => entry.date === selectedDate).length}
-                      </span>
-                      <button
-                        onClick={() => handleTradeSelect(Math.min(entries.filter(entry => entry.date === selectedDate).length - 1, selectedTradeIndex + 1))}
-                        disabled={selectedTradeIndex === entries.filter(entry => entry.date === selectedDate).length - 1}
-                        className="p-2 text-2xl font-bold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                      >
-                        →
-                      </button>
+      {/* Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl bg-white dark:bg-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
+              {selectedDate ? format(new Date(selectedDate), 'MMMM d, yyyy') : ''}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2 sm:space-y-4">
+            {/* Trade Info Section */}
+            <section>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white border-b pb-0.5 mb-1">Trade Information</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Coin</label>
+                  {isViewMode ? (
+                    <div className="w-full px-3 py-2 text-base text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 rounded-lg">
+                      {formData.coin || <span className="text-gray-400">No coin</span>}
                     </div>
+                  ) : (
+                    <CoinInput
+                      value={formData.coin}
+                      onChange={coin => setFormData({ ...formData, coin })}
+                      disabled={isViewMode}
+                    />
                   )}
                 </div>
-              </div>
-            </DialogHeader>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 xs:gap-4">
-              <div className="space-y-3 xs:space-y-4">
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Setup
-                  </label>
-                  <input
-                    ref={setupInputRef}
-                    type="text"
-                    value={formData.setup}
-                    onChange={e => setFormData({ ...formData, setup: e.target.value })}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    placeholder="Enter trade setup"
-                    disabled={isViewMode}
-                  />
-                  {errors.setup && (
-                    <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.setup}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    P&L ($)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">P&L ($)</label>
                   <input
                     type="number"
-                    value={formData.pnl}
+                    value={formData.pnl === null ? '' : formData.pnl}
                     onChange={(e) => handlePnLChange(e.target.value)}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter P&L in dollars"
                     disabled={isViewMode}
                   />
                   {errors.pnl && (
-                    <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.pnl.replace('P&L', 'P&L ($)')}</p>
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.pnl.replace('P&L', 'P&L ($)')}</p>
                   )}
                 </div>
-
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Outcome
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Outcome</label>
                   <select
                     value={formData.outcome}
                     onChange={(e) => setFormData({ ...formData, outcome: e.target.value as 'win' | 'loss' })}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     disabled={isViewMode}
                   >
                     <option value="win">Win</option>
                     <option value="loss">Loss</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Mood
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mood</label>
                   <select
                     value={formData.mood}
                     onChange={(e) => setFormData({ ...formData, mood: e.target.value })}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     disabled={isViewMode}
                   >
                     <option value="great">Great</option>
@@ -758,53 +774,74 @@ export function Calendar() {
                     <option value="terrible">Terrible</option>
                   </select>
                 </div>
-
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Setup</label>
+                  {isViewMode ? (
+                    <div className="w-full px-3 py-2 text-base text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 rounded-lg">
+                      {formData.setup.length > 0 ? formData.setup.join(' + ') : <span className="text-gray-400">No setup</span>}
+                    </div>
+                  ) : (
+                    <SetupInput
+                      value={formData.setup}
+                      onChange={(value) => setFormData({ ...formData, setup: value })}
+                      disabled={isViewMode}
+                    />
+                  )}
+                  {errors.setup && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.setup}</p>
+                  )}
+                </div>
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Position Size ($) <span className="text-gray-400">(optional)</span>
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Position Size ($) <span className="text-gray-400">(optional)</span></label>
                   <input
                     type="number"
                     value={formData.positionSize === undefined ? '' : formData.positionSize}
                     onChange={e => setFormData(prev => ({ ...prev, positionSize: e.target.value }))}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter position size in $"
                     min="0"
                     disabled={isViewMode}
                   />
                 </div>
-
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Leverage (X) <span className="text-gray-400">(optional)</span>
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Leverage (X) <span className="text-gray-400">(optional)</span></label>
                   <input
                     type="number"
                     value={formData.leverage === undefined ? '' : formData.leverage}
                     onChange={e => setFormData(prev => ({ ...prev, leverage: e.target.value }))}
-                    className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter leverage (e.g. 5 for 5x)"
                     min="0"
                     disabled={isViewMode}
                   />
                 </div>
-
-                <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Trade Link <span className="text-gray-400">(optional)</span>
-                  </label>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trade Link <span className="text-gray-400">(optional)</span></label>
                   {isViewMode ? (
                     formData.link ? (
-                      <a
-                        href={formData.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline truncate block"
-                      >
-                        {formData.link}
-                      </a>
+                      (() => {
+                        try {
+                          new URL(formData.link);
+                          return (
+                            <a
+                              href={formData.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full px-3 py-2 text-base text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline truncate block bg-gray-50 dark:bg-gray-800 rounded-lg"
+                            >
+                              {formData.link}
+                            </a>
+                          );
+                        } catch {
+                          return (
+                            <span className="w-full px-3 py-2 text-base text-red-500 dark:text-red-400 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              Invalid link
+                            </span>
+                          );
+                        }
+                      })()
                     ) : (
-                      <span className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base text-gray-500 dark:text-gray-400">
+                      <span className="w-full px-3 py-2 text-base text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg mt-2 block">
                         No link provided
                       </span>
                     )
@@ -813,161 +850,254 @@ export function Calendar() {
                       type="url"
                       value={formData.link || ''}
                       onChange={e => setFormData(prev => ({ ...prev, link: e.target.value }))}
-                      className="w-full px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                      className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                       placeholder="Enter trade link (e.g. chart, analysis, etc.)"
                       disabled={isViewMode}
                     />
                   )}
                 </div>
               </div>
+            </section>
 
-              <div className="space-y-3 xs:space-y-4">
+            {/* Notes Section */}
+            <section>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white border-b pb-0.5 mb-1">Notes & Lessons</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Lessons Learned
-                    <span className="text-[10px] xs:text-xs text-gray-500 dark:text-gray-400 ml-1">
-                      ({charCount.lessons}/500)
-                    </span>
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lessons Learned <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">({charCount.lessons}/500)</span></label>
                   <textarea
                     value={formData.lessons}
                     onChange={(e) => handleTextChange('lessons', e.target.value)}
-                    className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+                    className="w-full h-24 px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
                     placeholder="What did you learn from this trade?"
                     disabled={isViewMode}
                   />
                   {errors.lessons && (
-                    <p className="mt-1 text-xs xs:text-sm text-red-600 dark:text-red-400">{errors.lessons}</p>
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.lessons}</p>
                   )}
                 </div>
-
                 <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Notes
-                    <span className="text-[10px] xs:text-xs text-gray-500 dark:text-gray-400 ml-1">
-                      ({charCount.notes}/1000)
-                    </span>
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Additional Notes <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">({charCount.notes}/1000)</span></label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => handleTextChange('notes', e.target.value)}
-                    className="w-full h-24 xs:h-32 px-2 xs:px-3 py-1.5 xs:py-2 text-sm xs:text-base border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+                    className="w-full h-24 px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
                     placeholder="Additional notes about the trade"
                     disabled={isViewMode}
                   />
                 </div>
+              </div>
+            </section>
 
-                <div>
-                  <label className="block text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Trade Images
-                  </label>
-                  <div className="grid grid-cols-2 xs:grid-cols-3 gap-1 xs:gap-2">
-                    {formData.images?.map((image, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={image.preview}
-                          alt={image.name}
-                          className="w-full h-16 xs:h-20 sm:h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => handleImageClick(image)}
-                        />
-                        {!isViewMode && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveImage(index);
-                            }}
-                            className="absolute top-0.5 xs:top-1 right-0.5 xs:right-1 p-0.5 xs:p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    ))}
+            {/* Images Section */}
+            <section>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white border-b pb-0.5 mb-1">Trade Images</h3>
+              <div className="flex space-x-5 overflow-x-auto py-2">
+                {isViewMode && (!formData.images || formData.images.length === 0) && (
+                  <span className="text-gray-400 text-base flex items-center">No photo uploaded</span>
+                )}
+                {formData.images?.map((image, index) => (
+                  <div key={index} className="relative w-[160px] h-[110px] rounded-lg shadow border overflow-hidden group flex-shrink-0">
+                    <img
+                      src={image.preview}
+                      alt={image.name}
+                      className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => handleImageClick(image, index)}
+                    />
                     {!isViewMode && (
-                      <label className="flex items-center justify-center h-16 xs:h-20 sm:h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleFileChange}
-                          className="hidden"
-                        />
-                        <span className="text-xs xs:text-sm text-gray-500 dark:text-gray-400">Add Images</span>
-                      </label>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleRemoveImage(index); }}
+                        className="absolute top-2 right-2 bg-white bg-opacity-90 rounded-full p-1.5 hover:bg-red-500 hover:text-white transition text-xl shadow"
+                        title="Delete"
+                      >
+                        ×
+                      </button>
                     )}
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="flex flex-col xs:flex-row gap-2 xs:gap-4">
-              <div className="flex gap-2 w-full xs:w-auto">
-                {isViewMode && (
-                  <>
-                    <button
-                      onClick={handleEditClick}
-                      className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
-                    >
-                      Edit Trade
-                    </button>
-                    <button
-                      onClick={handleDeleteEntry}
-                      className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
-                    >
-                      Delete Trade
-                    </button>
-                    <button
-                      onClick={handleAddNewTrade}
-                      className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
-                    >
-                      New Trade
-                    </button>
-                  </>
-                )}
-              </div>
-              <div className="flex gap-2 w-full xs:w-auto">
-                <button
-                  onClick={() => setIsDialogOpen(false)}
-                  className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-                >
-                  Cancel
-                </button>
+                ))}
                 {!isViewMode && (
-                  <button
-                    onClick={handleSaveEntry}
-                    disabled={isSaving}
-                    className="flex-1 xs:flex-none px-3 xs:px-4 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  <label
+                    className={
+                      `flex items-center justify-center w-[160px] h-[110px] border-2 border-dashed rounded-lg cursor-pointer transition-colors flex-shrink-0 ` +
+                      (isDragging
+                        ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30'
+                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500')
+                    }
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
                   >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="w-3 h-3 xs:w-4 xs:h-4 mr-1 xs:mr-2 animate-spin inline" />
-                        Saving...
-                      </>
-                    ) : (
-                      isEditing ? 'Update Trade' : 'Save Trade'
-                    )}
-                  </button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <span className="text-lg text-gray-500 dark:text-gray-400 text-center">
+                      +<br />Upload or drag & drop images
+                    </span>
+                  </label>
                 )}
               </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </section>
+          </div>
 
-        {/* Image Preview Dialog */}
-        <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-          <DialogContent className="w-[95vw] xs:w-[90vw] sm:max-w-[600px] md:max-w-[800px] lg:max-w-[1000px] p-0 dark:bg-gray-800">
-            {selectedImage && (
-              <div className="relative">
-                <img
-                  src={selectedImage.preview}
-                  alt={selectedImage.name}
-                  className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
-                />
+          <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4 mt-4 border-t">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              {isViewMode && (
+                <>
+                  <button
+                    onClick={handleEditClick}
+                    className="flex-1 sm:flex-none px-4 py-2 text-base font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                  >
+                    Edit Trade
+                  </button>
+                  <button
+                    onClick={handleDeleteEntry}
+                    className="flex-1 sm:flex-none px-4 py-2 text-base font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                  >
+                    Delete Trade
+                  </button>
+                  <button
+                    onClick={handleAddNewTrade}
+                    className="flex-1 sm:flex-none px-4 py-2 text-base font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                  >
+                    New Trade
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => setIsDialogOpen(false)}
+                className="flex-1 sm:flex-none px-4 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              {!isViewMode && (
+                <button
+                  onClick={handleSaveEntry}
+                  disabled={isSaving}
+                  className="flex-1 sm:flex-none px-4 py-2 text-base font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
+                      Saving...
+                    </>
+                  ) : (
+                    isEditing ? 'Update Trade' : 'Save Trade'
+                  )}
+                </button>
+              )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Preview Fullscreen Overlay */}
+      {isPreviewOpen && selectedImage && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 pointer-events-auto">
+          {/* Controls overlayed at top-right */}
+          <div className="absolute top-4 right-4 z-10 flex gap-2">
+            <button
+              onClick={() => { const newScale = Math.min(scale * 1.1, 3); setScale(newScale); }}
+              className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              title="Zoom in"
+            >+
+            </button>
+            <button
+              onClick={() => { const newScale = Math.max(scale / 1.1, 0.5); setScale(newScale); }}
+              className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              title="Zoom out"
+            >-
+            </button>
+            <button
+              onClick={() => { setScale(1); setPosition({ x: 0, y: 0 }); }}
+              className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              title="Reset zoom"
+            >Reset
+            </button>
+            <button
+              onClick={() => setIsPreviewOpen(false)}
+              className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              title="Close"
+            >×
+            </button>
+          </div>
+          {/* Image with pan/zoom */}
+          <div
+            ref={imageContainerRef}
+            className="relative flex items-center justify-center w-full h-full cursor-pointer select-none"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            style={{ touchAction: 'none' }}
+          >
+            <img
+              src={selectedImage.preview}
+              alt={selectedImage.name}
+              className="max-w-full max-h-full object-contain select-none"
+              style={{
+                transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                willChange: 'transform',
+                transformOrigin: 'center center',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                pointerEvents: 'all',
+              }}
+              draggable="false"
+            />
+            {/* Navigation controls at bottom center if multiple images */}
+            {formData.images && formData.images.length > 1 && (
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                <button
+                  onClick={() => {
+                    if (currentImageIndex > 0) {
+                      const prevImage = formData.images[currentImageIndex - 1]
+                      if (prevImage) {
+                        setSelectedImage(prevImage)
+                        setCurrentImageIndex(currentImageIndex - 1)
+                        setScale(1)
+                        setPosition({ x: 0, y: 0 })
+                      }
+                    }
+                  }}
+                  disabled={currentImageIndex === 0}
+                  className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Previous image"
+                >←
+                </button>
+                <span className="px-3 py-2 bg-black/60 text-white rounded-full">
+                  {currentImageIndex + 1} / {formData.images.length}
+                </span>
+                <button
+                  onClick={() => {
+                    if (currentImageIndex < formData.images.length - 1) {
+                      const nextImage = formData.images[currentImageIndex + 1]
+                      if (nextImage) {
+                        setSelectedImage(nextImage)
+                        setCurrentImageIndex(currentImageIndex + 1)
+                        setScale(1)
+                        setPosition({ x: 0, y: 0 })
+                      }
+                    }
+                  }}
+                  disabled={currentImageIndex === formData.images.length - 1}
+                  className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Next image"
+                >→
+                </button>
               </div>
             )}
-          </DialogContent>
-        </Dialog>
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { format, parseISO, isWithinInterval } from 'date-fns'
 import { useTradeStore } from '@/store/tradeStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useToast } from '@/components/ui/use-toast'
 import { Search, Filter, Download, ChevronUp, ChevronDown, Edit2, Trash2, Check } from 'lucide-react'
@@ -11,12 +11,13 @@ import { Button } from '@/components/ui/button'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import type { DateRange } from 'react-day-picker'
 import { Dialog as PreviewDialog, DialogContent as PreviewDialogContent } from '@/components/ui/dialog'
+import { SetupInput } from '@/components/ui/setup-input'
 
 interface TradeEntry {
   id: string
   date: string
   lessons: string
-  setup: string
+  setup: string[]
   pnl: number
   outcome: 'win' | 'loss'
   tags: string[]
@@ -54,9 +55,18 @@ export function Journal() {
   const [editingEntry, setEditingEntry] = useState<TradeEntry | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null)
-  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [imageViewer, setImageViewer] = useState<{ open: boolean, index: number }>({ open: false, index: 0 })
   const setupInputRef = useRef<HTMLInputElement>(null)
   const dummyRef = useRef<HTMLButtonElement>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<{ preview: string; name: string } | null>(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const imageContainerRef = useRef<HTMLDivElement>(null)
+  const [isDraggingUpload, setIsDraggingUpload] = useState(false)
 
   const allTags = useMemo(() => {
     const tags = new Set<string>()
@@ -67,7 +77,7 @@ export function Journal() {
   const filterEntries = (entries: TradeEntry[]) => {
     return entries.filter(entry => {
       const matchesSearch = searchQuery === '' || 
-        entry.setup.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        entry.setup.some(setup => setup.toLowerCase().includes(searchQuery.toLowerCase())) ||
         entry.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
         entry.notes?.toLowerCase().includes(searchQuery.toLowerCase())
 
@@ -164,7 +174,12 @@ export function Journal() {
 
   const handleSaveEdit = (updatedEntry: Partial<TradeEntry>) => {
     if (editingEntry) {
-      updateEntry(editingEntry.id, updatedEntry)
+      const entryToUpdate = {
+        ...editingEntry,
+        ...updatedEntry,
+        setup: Array.isArray(updatedEntry.setup) ? updatedEntry.setup : typeof updatedEntry.setup === 'string' ? [updatedEntry.setup] : []
+      }
+      updateEntry(editingEntry.id, entryToUpdate)
       toast({
         title: 'Success',
         description: 'Trade entry updated',
@@ -197,60 +212,140 @@ export function Journal() {
     }
   }, [entries, searchQuery, dateRange])
 
+  const handleImageClick = (index: number) => {
+    setImageViewer({ open: true, index })
+  }
+
+  // Handlers for pan/zoom overlay
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (scale > 1) {
+      setIsDragging(true)
+      setDragStart({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+      })
+    }
+  }
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && scale > 1) {
+      e.preventDefault()
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      })
+    }
+  }
+  const handleMouseUp = () => setIsDragging(false)
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    const newScale = Math.min(Math.max(scale * delta, 0.5), 3)
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const newPosition = {
+      x: position.x - (x - position.x) * (delta - 1),
+      y: position.y - (y - position.y) * (delta - 1)
+    }
+    setScale(newScale)
+    setPosition(newPosition)
+  }
+
+  // Keyboard navigation for overlay
+  useEffect(() => {
+    if (!isPreviewOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isPreviewOpen) return
+      if (e.key === 'ArrowLeft') {
+        if (editingEntry?.images && currentImageIndex > 0) {
+          const prevImage = editingEntry.images[currentImageIndex - 1]
+          if (prevImage) {
+            setSelectedImage({ preview: prevImage, name: `Trade Image ${currentImageIndex}` })
+            setCurrentImageIndex(currentImageIndex - 1)
+            setScale(1)
+            setPosition({ x: 0, y: 0 })
+          }
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (editingEntry?.images && currentImageIndex < editingEntry.images.length - 1) {
+          const nextImage = editingEntry.images[currentImageIndex + 1]
+          if (nextImage) {
+            setSelectedImage({ preview: nextImage, name: `Trade Image ${currentImageIndex + 2}` })
+            setCurrentImageIndex(currentImageIndex + 1)
+            setScale(1)
+            setPosition({ x: 0, y: 0 })
+          }
+        }
+      } else if (e.key === 'Escape') {
+        setIsPreviewOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isPreviewOpen, currentImageIndex, editingEntry])
+
+  // Drag & drop upload (optional, if you want to support it in Journal)
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingUpload(true)
+  }
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingUpload(false)
+  }
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingUpload(false)
+    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'))
+    if (!editingEntry || files.length === 0) return
+    // You may want to add file size validation here
+    const processedFiles = await Promise.all(
+      files.map(async (file) => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            resolve(reader.result as string)
+          }
+          reader.readAsDataURL(file)
+        })
+      })
+    )
+    handleSaveEdit({ ...editingEntry, images: [...(editingEntry.images || []), ...processedFiles] })
+  }
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editingEntry || !e.target.files) return
+    const files = Array.from(e.target.files)
+    const processedFiles = await Promise.all(
+      files.map(async (file) => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            resolve(reader.result as string)
+          }
+          reader.readAsDataURL(file)
+        })
+      })
+    )
+    handleSaveEdit({ ...editingEntry, images: [...(editingEntry.images || []), ...processedFiles] })
+  }
+  const handleRemoveImage = (index: number) => {
+    if (!editingEntry) return
+    handleSaveEdit({ ...editingEntry, images: editingEntry.images?.filter((_, i) => i !== index) })
+  }
+
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trading Journal</h1>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm sm:text-base font-medium text-gray-500">Total Trades</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.totalTrades}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm sm:text-base font-medium text-gray-500">Win Rate</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stats.winRate.toFixed(1)}%</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm sm:text-base font-medium text-gray-500">Total P&L</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl sm:text-3xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {stats.totalPnL >= 0 ? '+' : ''}{stats.totalPnL.toFixed(2)}%
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search trades..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-white text-gray-900 border border-gray-300 placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700 dark:placeholder:text-gray-400"
-              />
-            </div>
-          </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <DateRangePicker
               value={dateRange}
               onChange={setDateRange}
@@ -258,167 +353,197 @@ export function Journal() {
             />
             <Button
               variant="outline"
+              size="sm"
+              className="h-9 px-3"
               onClick={() => {
-                setSearchQuery('')
-                setDateRange(undefined)
+                const csv = generateCSV(entries)
+                downloadCSV(csv, 'trading-journal.csv')
               }}
-              className="whitespace-nowrap"
             >
-              Clear Filters
+              <Download className="h-4 w-4 mr-2" />
+              Export
             </Button>
           </div>
         </div>
 
-        {/* Trade Table */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-500">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total Trades</h3>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalTrades}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Win Rate</h3>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.winRate.toFixed(1)}%</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total PnL</h3>
+              <div className={`text-2xl font-bold ${stats.totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {stats.totalPnL >= 0 ? '+' : ''}{stats.totalPnL.toFixed(2)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search setups, tags, or notes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-3"
+            onClick={handleBulkDelete}
+            disabled={selectedRows.size === 0}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Selected
+          </Button>
+        </div>
+
+        {/* Journal Entries Table */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.size === paginatedEntries.length}
+                      onChange={() => {
+                        if (selectedRows.size === paginatedEntries.length) {
+                          setSelectedRows(new Set())
+                        } else {
+                          setSelectedRows(new Set(paginatedEntries.map(entry => entry.id)))
+                        }
+                      }}
+                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Setup
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    PnL
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Tags
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {paginatedEntries.map((entry) => (
+                  <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-4 py-3">
                       <input
                         type="checkbox"
-                        checked={selectedRows.size === paginatedEntries.length}
-                        onChange={() => {
-                          if (selectedRows.size === paginatedEntries.length) {
-                            setSelectedRows(new Set())
-                          } else {
-                            setSelectedRows(new Set(paginatedEntries.map(entry => entry.id)))
-                          }
-                        }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        checked={selectedRows.has(entry.id)}
+                        onChange={() => handleRowSelect(entry.id)}
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400"
                       />
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-500">
-                      <button
-                        onClick={() => handleSort('date')}
-                        className="flex items-center gap-1 hover:text-gray-700"
-                      >
-                        Date
-                        {sortConfig.key === 'date' && (
-                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                        )}
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-500">
-                      <button
-                        onClick={() => handleSort('setup')}
-                        className="flex items-center gap-1 hover:text-gray-700"
-                      >
-                        Setup
-                        {sortConfig.key === 'setup' && (
-                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                        )}
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-500">
-                      <button
-                        onClick={() => handleSort('pnl')}
-                        className="flex items-center gap-1 hover:text-gray-700"
-                      >
-                        P&L
-                        {sortConfig.key === 'pnl' && (
-                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                        )}
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-500">
-                      <button
-                        onClick={() => handleSort('outcome')}
-                        className="flex items-center gap-1 hover:text-gray-700"
-                      >
-                        Outcome
-                        {sortConfig.key === 'outcome' && (
-                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                        )}
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-500">Actions</th>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                      {format(parseISO(entry.date), 'MMM d, yyyy')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {entry.setup.map((setup, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300"
+                          >
+                            {setup}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-sm font-medium ${entry.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {entry.pnl >= 0 ? '+' : ''}{entry.pnl.toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {entry.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleEdit(entry)}
+                        >
+                          <Edit2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleDelete(entry.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        </Button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {paginatedEntries.map(entry => (
-                    <tr key={entry.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedRows.has(entry.id)}
-                          onChange={() => handleRowSelect(entry.id)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {format(parseISO(entry.date), 'MMM d, yyyy')}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {entry.setup}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={entry.pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {entry.pnl >= 0 ? '+' : ''}{entry.pnl.toFixed(2)}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          entry.outcome === 'win' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {entry.outcome}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEdit(entry)}
-                            className="text-gray-400 hover:text-gray-500"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(entry.id)}
-                            className="text-gray-400 hover:text-red-500"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         {/* Pagination */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleBulkDelete}
-              disabled={selectedRows.size === 0}
-              className="text-sm"
-            >
-              Delete Selected ({selectedRows.size})
-            </Button>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filterEntries(entries).length)} of {filterEntries(entries).length} entries
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="text-sm"
+              className="h-8 px-3"
             >
               Previous
             </Button>
-            <span className="text-sm text-gray-500">
-              Page {currentPage} of {totalPages}
-            </span>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="text-sm"
+              className="h-8 px-3"
             >
               Next
             </Button>
@@ -427,15 +552,12 @@ export function Journal() {
 
         {/* Edit Dialog */}
         <Dialog open={isEditing} onOpenChange={setIsEditing}>
-          <DialogContent 
-            // @ts-expect-error initialFocus is supported by Radix Dialog but not in their types yet
-            initialFocus={isEditing ? dummyRef : setupInputRef}
-            className="sm:max-w-[425px] md:max-w-[600px]">
-            <button ref={dummyRef} tabIndex={0} aria-hidden="true" style={{position:'absolute',opacity:0,pointerEvents:'none',height:0,width:0}} />
+          <DialogContent className="sm:max-w-[600px] md:max-w-[800px]" aria-labelledby="edit-dialog-title" aria-describedby="edit-dialog-description">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl font-semibold">
+              <DialogTitle id="edit-dialog-title" className="text-lg sm:text-xl font-semibold">
                 Edit Trade Entry
               </DialogTitle>
+              <DialogDescription id="edit-dialog-description" className="sr-only">Edit the details of your trade entry.</DialogDescription>
             </DialogHeader>
             {editingEntry && (
               <>
@@ -445,18 +567,15 @@ export function Journal() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Setup
                       </label>
-                      <input
-                        ref={setupInputRef}
-                        type="text"
+                      <SetupInput
                         value={editingEntry.setup}
-                        onChange={e => handleSaveEdit({ ...editingEntry, setup: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter trade setup"
+                        onChange={(value) => handleSaveEdit({ ...editingEntry, setup: value })}
+                        className="w-full"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        P&L (%)
+                        P&L ($)
                       </label>
                       <input
                         type="number"
@@ -520,17 +639,54 @@ export function Journal() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Trade Images
                       </label>
-                      <div className="grid grid-cols-2 xs:grid-cols-3 gap-1 xs:gap-2">
-                        {editingEntry.images && editingEntry.images.map((img, idx) => (
-                          <div key={idx} className="relative group">
+                      <div className="flex space-x-5 overflow-x-auto py-2">
+                        {editingEntry?.images?.length === 0 && (
+                          <span className="text-gray-400 text-base flex items-center">No photo uploaded</span>
+                        )}
+                        {editingEntry?.images?.map((img, idx) => (
+                          <div key={idx} className="relative w-[160px] h-[110px] rounded-lg shadow border overflow-hidden group flex-shrink-0">
                             <img
                               src={img}
                               alt={`Trade Image ${idx + 1}`}
-                              className="w-full h-16 xs:h-20 sm:h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                              onClick={() => setPreviewImage(img)}
+                              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => {
+                                setSelectedImage({ preview: img, name: `Trade Image ${idx + 1}` })
+                                setCurrentImageIndex(idx)
+                                setScale(1)
+                                setPosition({ x: 0, y: 0 })
+                                setIsPreviewOpen(true)
+                              }}
                             />
+                            <button
+                              onClick={e => { e.stopPropagation(); handleRemoveImage(idx); }}
+                              className="absolute top-2 right-2 bg-white bg-opacity-90 rounded-full p-1.5 hover:bg-red-500 hover:text-white transition text-xl shadow"
+                              title="Delete"
+                            >×</button>
                           </div>
                         ))}
+                        <label
+                          className={
+                            `flex items-center justify-center w-[160px] h-[110px] border-2 border-dashed rounded-lg cursor-pointer transition-colors flex-shrink-0 ` +
+                            (isDraggingUpload
+                              ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30'
+                              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500')
+                          }
+                          onDragEnter={handleDragEnter}
+                          onDragLeave={handleDragLeave}
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                        >
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleFileChange}
+                            className="hidden"
+                          />
+                          <span className="text-lg text-gray-500 dark:text-gray-400 text-center">
+                            +<br />Upload or drag & drop images
+                          </span>
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -552,20 +708,6 @@ export function Journal() {
                 </DialogFooter>
               </>
             )}
-            {/* Image Preview Dialog (always rendered, controlled by previewImage state) */}
-            <PreviewDialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-              <PreviewDialogContent className="w-[95vw] xs:w-[90vw] sm:max-w-[600px] md:max-w-[800px] lg:max-w-[1000px] p-0 dark:bg-gray-800">
-                {previewImage && (
-                  <div className="relative">
-                    <img
-                      src={previewImage}
-                      alt="Preview"
-                      className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
-                    />
-                  </div>
-                )}
-              </PreviewDialogContent>
-            </PreviewDialog>
           </DialogContent>
         </Dialog>
 
@@ -590,6 +732,112 @@ export function Journal() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+
+      {/* Move the fullscreen overlay here, outside the modal */}
+      {isPreviewOpen && selectedImage && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 pointer-events-auto">
+          {/* Controls overlayed at top-right */}
+          <div className="absolute top-4 right-4 z-10 flex gap-2">
+            <button
+              onClick={() => { const newScale = Math.min(scale * 1.1, 3); setScale(newScale); }}
+              className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              title="Zoom in"
+            >+
+            </button>
+            <button
+              onClick={() => { const newScale = Math.max(scale / 1.1, 0.5); setScale(newScale); }}
+              className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              title="Zoom out"
+            >-
+            </button>
+            <button
+              onClick={() => { setScale(1); setPosition({ x: 0, y: 0 }); }}
+              className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              title="Reset zoom"
+            >Reset
+            </button>
+            <button
+              onClick={() => setIsPreviewOpen(false)}
+              className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+              title="Close"
+            >×
+            </button>
+          </div>
+          {/* Image with pan/zoom */}
+          <div
+            ref={imageContainerRef}
+            className="relative flex items-center justify-center w-full h-full cursor-pointer select-none"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onWheel={handleWheel}
+            style={{ touchAction: 'none' }}
+          >
+            <img
+              src={selectedImage.preview}
+              alt={selectedImage.name}
+              className="max-w-full max-h-full object-contain select-none"
+              style={{
+                transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                willChange: 'transform',
+                transformOrigin: 'center center',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                pointerEvents: 'all',
+              }}
+              draggable="false"
+            />
+            {/* Navigation controls at bottom center if multiple images */}
+            {editingEntry?.images && editingEntry.images.length > 1 && (
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                <button
+                  onClick={() => {
+                    if (currentImageIndex > 0 && editingEntry?.images?.[currentImageIndex - 1]) {
+                      const prevImage = editingEntry.images[currentImageIndex - 1]
+                      setSelectedImage({ preview: prevImage, name: `Trade Image ${currentImageIndex}` })
+                      setCurrentImageIndex(currentImageIndex - 1)
+                      setScale(1)
+                      setPosition({ x: 0, y: 0 })
+                    }
+                  }}
+                  disabled={currentImageIndex === 0 || !(editingEntry?.images?.length > 1)}
+                  className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Previous image"
+                >←
+                </button>
+                <span className="px-3 py-2 bg-black/60 text-white rounded-full">
+                  {currentImageIndex + 1} / {editingEntry?.images?.length || 0}
+                </span>
+                <button
+                  onClick={() => {
+                    if (
+                      editingEntry?.images &&
+                      currentImageIndex < editingEntry.images.length - 1 &&
+                      editingEntry.images[currentImageIndex + 1]
+                    ) {
+                      const nextImage = editingEntry.images[currentImageIndex + 1]
+                      setSelectedImage({ preview: nextImage, name: `Trade Image ${currentImageIndex + 2}` })
+                      setCurrentImageIndex(currentImageIndex + 1)
+                      setScale(1)
+                      setPosition({ x: 0, y: 0 })
+                    }
+                  }}
+                  disabled={
+                    !editingEntry?.images ||
+                    currentImageIndex === (editingEntry.images?.length || 0) - 1
+                  }
+                  className="p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Next image"
+                >→
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

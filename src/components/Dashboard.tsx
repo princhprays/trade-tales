@@ -1,40 +1,31 @@
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Area } from 'recharts'
 import { useTradeStore } from '../store/tradeStore'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval, parseISO } from 'date-fns'
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval, parseISO, subDays, eachDayOfInterval } from 'date-fns'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog'
 import { useToast } from './ui/use-toast'
-import { Dialog as TradesDialog, DialogContent as TradesDialogContent, DialogHeader as TradesDialogHeader, DialogTitle as TradesDialogTitle } from './ui/dialog'
+import { Dialog as TradesDialog, DialogContent as TradesDialogContent, DialogHeader as TradesDialogHeader, DialogTitle as TradesDialogTitle, DialogDescription as TradesDialogDescription } from './ui/dialog'
+import { normalizeTradeName } from '../store/tradeStore'
+import { DateRangePicker } from './ui/date-range-picker'
+import type { DateRange } from 'react-day-picker'
+import { ImageViewer } from './ui/image-viewer'
 
 const WINLOSS_COLORS = ['#10B981', '#EF4444'] // Modern green and red
 const CHART_COLORS = {
-  primary: '#3B82F6', // Modern blue
-  grid: '#E5E7EB',
-  text: '#6B7280',
-  tooltip: '#1F2937'
-}
-
-// Add setup alias map at the top level
-const SETUP_ALIASES: Record<string, string> = {
-  // Add your setup aliases here
-  'baby - 1h bp trades': 'baby',
-  'baby - shesh setup': 'baby',
-  // Add more aliases as needed
-};
-
-// Helper function to normalize setup names
-function normalizeSetupName(setup: string): string {
-  if (!setup) return '';
-  
-  // First normalize the input
-  const normalized = setup.toLowerCase().trim();
-  
-  // Check if this normalized name has an alias
-  return SETUP_ALIASES[normalized] || normalized;
+  primary: 'rgb(59, 130, 246)', // Modern blue
+  grid: 'rgb(229, 231, 235)',
+  text: 'rgb(107, 114, 128)',
+  tooltip: 'rgb(31, 41, 55)',
+  dark: {
+    primary: 'rgb(96, 165, 250)', // Lighter blue for dark mode
+    grid: 'rgb(75, 85, 99)',
+    text: 'rgb(156, 163, 175)',
+    tooltip: 'rgb(17, 24, 39)'
+  }
 }
 
 function useIsDarkMode() {
@@ -58,23 +49,64 @@ function WinLossCustomTooltip({ active, payload, label, isDarkMode, winLossData 
   const total = winLossData.reduce((sum, d) => sum + (d.value || 0), 0);
   const percent = total > 0 ? (value / total) * 100 : null;
   const color = name === 'Win' ? (isDarkMode ? '#10B981' : '#059669') : (isDarkMode ? '#EF4444' : '#DC2626');
+  
   return (
-    <div
-      style={{
-        background: isDarkMode ? '#1F2937' : '#fff',
-        color: isDarkMode ? '#fff' : '#1F2937',
-        borderRadius: 8,
-        padding: '8px 12px',
-        boxShadow: isDarkMode ? '0 2px 8px #0004' : '0 2px 8px #0001',
-        minWidth: 80,
-      }}
-    >
-      <div style={{ fontWeight: 600, color }}>{value} {name}</div>
+    <div className={`
+      p-2 rounded-lg shadow-lg min-w-[80px]
+      ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}
+    `}>
+      <div className="font-semibold" style={{ color }}>{value} {name}</div>
       {percent !== null && (
-        <div style={{ fontSize: 13, color: isDarkMode ? '#fff' : '#1F2937' }}>{percent.toFixed(0)}%</div>
+        <div className="text-sm">{percent.toFixed(0)}%</div>
       )}
     </div>
   );
+}
+
+// Helper to calculate Sharpe ratio
+export function calculateSharpeRatio(trades, riskFreeRate = 0) {
+  if (trades.length < 2) return null
+  const returns = trades.map(t => t.pnl)
+  const avg = returns.reduce((a, b) => a + b, 0) / returns.length
+  const stdDev = Math.sqrt(returns.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / returns.length)
+  return stdDev > 0 ? (avg - riskFreeRate) / stdDev : null
+}
+
+// Helper to calculate expectancy
+export function calculateExpectancy(trades) {
+  if (trades.length < 2) return null
+  const wins = trades.filter(t => t.outcome === 'win')
+  const losses = trades.filter(t => t.outcome === 'loss')
+  const winRate = wins.length / trades.length
+  const avgWin = wins.length > 0 ? wins.reduce((a, b) => a + b.pnl, 0) / wins.length : 0
+  const avgLoss = losses.length > 0 ? losses.reduce((a, b) => a + b.pnl, 0) / losses.length : 0
+  return winRate * avgWin + (1 - winRate) * avgLoss
+}
+
+// Helper to calculate average holding time
+export function calculateAvgHoldingTime(trades) {
+  if (trades.length < 2) return null
+  const holdingTimes = trades.map(t => t.holdingTime)
+  return holdingTimes.reduce((a, b) => a + b, 0) / holdingTimes.length
+}
+
+// Helper to calculate volatility
+export function calculateVolatility(trades) {
+  if (trades.length < 2) return null
+  const returns = trades.map(t => t.pnl)
+  const avg = returns.reduce((a, b) => a + b, 0) / returns.length
+  const stdDev = Math.sqrt(returns.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / returns.length)
+  return stdDev
+}
+
+// Helper to get best trade by return
+export function getBestTradeByReturn(trades) {
+  if (trades.length === 0) return null
+  return trades.reduce((best, trade) => {
+    const tradeReturn = trade.pnl / trade.positionSize
+    const bestReturn = best ? best.pnl / best.positionSize : 0
+    return tradeReturn > bestReturn ? trade : best
+  }, null)
 }
 
 export function Dashboard() {
@@ -120,24 +152,23 @@ export function Dashboard() {
 
   // Calculate best trade
   const bestTrade = entries.reduce((best, entry) => 
-    entry.pnl > best.pnl ? entry : best
-  , { pnl: 0, setup: '' })
-
-  // Calculate current streak
-  let currentStreak = 0
-  for (let i = entries.length - 1; i >= 0; i--) {
-    if (entries[i].outcome === 'win') currentStreak++
-    else break
-  }
+    entry.pnl > best.pnl ? { pnl: entry.pnl, setup: entry.setup[0] || '', coin: entry.coin || '' } : best
+  , { pnl: 0, setup: '', coin: '' })
 
   // Daily P&L data (group by date)
   const dailyPnlMap: Record<string, number> = {}
   entries.forEach(entry => {
     dailyPnlMap[entry.date] = (dailyPnlMap[entry.date] || 0) + entry.pnl
   })
-  const dailyPnlData = Object.entries(dailyPnlMap)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, pnl]) => ({ date, pnl }))
+  // Always show last 5 calendar days, even if no trades
+  const today = new Date();
+  const last5Days = eachDayOfInterval({ start: subDays(today, 4), end: today });
+  const dailyPnlData = last5Days.map(date => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    // Find matching entry in dailyPnlMap (may need to match only date part)
+    const pnl = dailyPnlMap[dateStr] || 0;
+    return { date: dateStr, pnl };
+  });
 
   // Win/Loss Ratio data
   const winLossData = [
@@ -147,20 +178,58 @@ export function Dashboard() {
 
   const isDarkMode = useIsDarkMode();
 
+  // In Dashboard, add state for dateRange and a handler for changes
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+
+  // Filter entries by dateRange for all stats/cards/charts
+  const filteredEntries = entries.filter(entry => {
+    if (!dateRange?.from && !dateRange?.to) return true
+    const d = parseISO(entry.date)
+    const from = dateRange?.from
+    const to = dateRange?.to
+    if (from && to) return d >= from && d <= to
+    if (from) return d >= from
+    if (to) return d <= to
+    return true
+  })
+
+  // Calculate current streak and longest streak
+  const { currentStreak, longestStreak } = entries.reduce((acc, entry) => {
+    if (entry.outcome === 'win') {
+      acc.currentStreak++;
+      acc.longestStreak = Math.max(acc.currentStreak, acc.longestStreak);
+    } else {
+      acc.currentStreak = 0;
+    }
+    return acc;
+  }, { currentStreak: 0, longestStreak: 0 });
+
+  // Calculate trade frequency (average trades per day)
+  const uniqueDays = new Set(entries.map(e => e.date.split('T')[0]));
+  const avgTradesPerDay = uniqueDays.size > 0 ? (entries.length / uniqueDays.size) : 0;
+
+  // Image viewer state
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isViewMode, setIsViewMode] = useState(false);
+  const [formData, setFormData] = useState({ images: [] });
+
+  const handleRemoveImage = (index: number) => {
+    const newImages = formData.images.filter((_, i) => i !== index);
+    setFormData({ ...formData, images: newImages });
+  };
+
   return (
     <div className="p-2 xs:p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-[95vw] xs:max-w-[90vw] sm:max-w-[85vw] md:max-w-7xl mx-auto">
-        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 xs:gap-4 mb-4 xs:mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 xs:gap-4 mb-4 xs:mb-6 sm:mb-8">
           <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Trading Analytics</h1>
-          <div className="text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-            Last updated: {format(new Date(), 'MMM d, yyyy h:mm a')}
-          </div>
         </div>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6 sm:mb-8">
           <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6">
+            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
               <div className="flex items-center justify-between mb-1 xs:mb-2">
                 <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Total Assets</h3>
                 <Button
@@ -182,52 +251,70 @@ export function Dashboard() {
           </Card>
 
           <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6">
+            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
               <div className="flex items-center justify-between mb-1 xs:mb-2">
                 <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Total PnL</h3>
-                <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{totalPnL >= 0 ? '↑' : '↓'} {Math.abs(totalPnL).toFixed(2)}%</span>
+                <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                  {totalPnL >= 0 ? '↑' : '↓'} ${Math.abs(totalPnL).toFixed(2)}
+                </span>
               </div>
               <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} dark:text-white`}>
-                {totalPnL >= 0 ? '+' : ''}{totalPnL.toFixed(2)}%
+                {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Win Rate</h3>
-                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Last 30d</span>
-              </div>
-              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{winRate.toFixed(1)}%</div>
               <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                {winCount} wins / {entries.length} trades
+                {initialCapital > 0 ? `${((totalPnL / initialCapital) * 100).toFixed(1)}% return` : 'No initial capital set'}
+                , {entries.length} trades total
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
+            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
               <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Current Streak</h3>
-                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Active</span>
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Streaks</h3>
+                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Current/Longest</span>
               </div>
-              <div className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{currentStreak}</div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base xs:text-lg sm:text-xl">🔥</span>
+                  <div className="text-base xs:text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                    Current: {currentStreak}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-base xs:text-lg sm:text-xl">🏆</span>
+                  <div className="text-base xs:text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                    Longest: {longestStreak}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
+            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
+              <div className="flex items-center justify-between mb-1 xs:mb-2">
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Trade Frequency</h3>
+                <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-blue-500">Avg/Day</span>
+              </div>
+              <div className="text-base xs:text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                {avgTradesPerDay.toFixed(2)}
+              </div>
               <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                {currentStreak > 0 ? 'Winning streak' : 'No active streak'}
+                You place {avgTradesPerDay.toFixed(2)} trades/day on average.
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-3 xs:p-4 sm:p-6">
+          <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
+            <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
               <div className="flex items-center justify-between mb-1 xs:mb-2">
-                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Best Trade</h3>
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Best Trade</h3>
                 <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-green-500">All time</span>
               </div>
               <div className="text-lg xs:text-xl sm:text-2xl font-bold text-green-600 dark:text-white">${bestTrade.pnl.toFixed(2)}</div>
               <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                {bestTrade.setup || 'No setup recorded'}
+                {bestTrade.coin && bestTrade.setup ? `${bestTrade.coin} - ${bestTrade.setup}` : 'No trade recorded'}
               </div>
             </CardContent>
           </Card>
@@ -240,7 +327,7 @@ export function Dashboard() {
               <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Daily P&L</CardTitle>
             </CardHeader>
             <CardContent className="h-[250px] xs:h-[300px] sm:h-[400px]">
-              {entries.length === 0 ? (
+              {filteredEntries.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs xs:text-sm sm:text-base">
                   No trading data available
                 </div>
@@ -251,7 +338,7 @@ export function Dashboard() {
                     <XAxis 
                       dataKey="date" 
                       tick={{ fill: CHART_COLORS.text, fontSize: 10 }}
-                      tickFormatter={(value) => format(parseISO(value), 'MMM d')}
+                      tickFormatter={(value) => format(parseISO(value), 'dd MMM')}
                     />
                     <YAxis 
                       tick={{ fill: CHART_COLORS.text, fontSize: 10 }}
@@ -286,8 +373,8 @@ export function Dashboard() {
             <CardHeader className="pb-1 xs:pb-2">
               <CardTitle className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Win/Loss Distribution</CardTitle>
             </CardHeader>
-            <CardContent className="h-[250px] xs:h-[300px] sm:h-[400px]">
-              {entries.length === 0 ? (
+            <CardContent className="h-[250px] xs:h-[300px] sm:h-[350px] md:h-[380px] lg:h-[400px]">
+              {filteredEntries.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs xs:text-sm sm:text-base">
                   No trading data available
                 </div>
@@ -298,8 +385,8 @@ export function Dashboard() {
                       data={winLossData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={40}
-                      outerRadius={80}
+                      innerRadius={Math.min(60, 0.15 * Math.min(window.innerWidth, window.innerHeight))}
+                      outerRadius={Math.min(120, 0.3 * Math.min(window.innerWidth, window.innerHeight))}
                       paddingAngle={2}
                       dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -334,8 +421,11 @@ export function Dashboard() {
             <CardTitle className="text-base xs:text-lg font-semibold text-gray-900 dark:text-white">Performance Metrics</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="weekly" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-4 xs:mb-6">
+            <Tabs defaultValue="daily" className="w-full">
+              <TabsList className="grid w-full grid-cols-4 mb-4 xs:mb-6">
+                <TabsTrigger value="daily" className="text-xs xs:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+                  Daily
+                </TabsTrigger>
                 <TabsTrigger value="weekly" className="text-xs xs:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                   Weekly
                 </TabsTrigger>
@@ -346,9 +436,21 @@ export function Dashboard() {
                   Yearly
                 </TabsTrigger>
               </TabsList>
+              <TabsContent value="daily">
+                <PerformanceMetrics
+                  entries={filteredEntries}
+                  period="day"
+                  showTradesModal={showTradesModal}
+                  setShowTradesModal={setShowTradesModal}
+                  modalTrades={modalTrades}
+                  setModalTrades={setModalTrades}
+                  modalSetup={modalSetup}
+                  setModalSetup={setModalSetup}
+                />
+              </TabsContent>
               <TabsContent value="weekly">
                 <PerformanceMetrics
-                  entries={entries}
+                  entries={filteredEntries}
                   period="week"
                   showTradesModal={showTradesModal}
                   setShowTradesModal={setShowTradesModal}
@@ -360,7 +462,7 @@ export function Dashboard() {
               </TabsContent>
               <TabsContent value="monthly">
                 <PerformanceMetrics
-                  entries={entries}
+                  entries={filteredEntries}
                   period="month"
                   showTradesModal={showTradesModal}
                   setShowTradesModal={setShowTradesModal}
@@ -372,7 +474,7 @@ export function Dashboard() {
               </TabsContent>
               <TabsContent value="yearly">
                 <PerformanceMetrics
-                  entries={entries}
+                  entries={filteredEntries}
                   period="year"
                   showTradesModal={showTradesModal}
                   setShowTradesModal={setShowTradesModal}
@@ -422,6 +524,9 @@ export function Dashboard() {
             <TradesDialogTitle className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
               Trades for setup: <span className="text-blue-600 dark:text-blue-400 font-semibold">{modalSetup}</span>
             </TradesDialogTitle>
+            <TradesDialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+              View all trades for this setup pattern
+            </TradesDialogDescription>
             <button
               onClick={() => setShowTradesModal(false)}
               className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-full p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -494,6 +599,18 @@ export function Dashboard() {
           </div>
         </TradesDialogContent>
       </TradesDialog>
+
+      {/* Image Viewer */}
+      <ImageViewer
+        images={formData.images}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        initialImageIndex={currentImageIndex}
+        onImageChange={setCurrentImageIndex}
+        showGrid={true}
+        onImageRemove={handleRemoveImage}
+        isViewMode={isViewMode}
+      />
     </div>
   )
 }
@@ -558,34 +675,38 @@ function getMostTradedSetupInfo(filtered: any[]): { setup: string; count: number
 
   // Process each trade
   filtered.forEach(e => {
-    if (!e.setup) return;
+    // Ensure entry.setup is an array before iterating
+    const setupsToProcess = Array.isArray(e.setup) ? e.setup : [e.setup];
 
-    // Normalize the setup name using our helper function
-    const normalized = normalizeSetupName(e.setup);
-    const displaySetup = e.setup.trim(); // Keep original case for display
-    
-    // If this is the first occurrence of this normalized setup
-    if (!setupStats[normalized]) {
-      setupStats[normalized] = {
-        count: 0,
-        pnl: 0,
-        lastDate: e.date,
-        display: displaySetup,
-        trades: [],
-        normalized: normalized
-      };
-    }
+    setupsToProcess.forEach(setupItem => {
+      const normalized = normalizeTradeName(setupItem);
+      if (!normalized) return;
+      
+      const displaySetup = setupItem.trim(); // Keep original case for display
+      
+      // If this is the first occurrence of this normalized setup
+      if (!setupStats[normalized]) {
+        setupStats[normalized] = {
+          count: 0,
+          pnl: 0,
+          lastDate: e.date,
+          display: displaySetup,
+          trades: [],
+          normalized: normalized
+        };
+      }
 
-    // Update statistics
-    setupStats[normalized].count++;
-    setupStats[normalized].pnl += e.pnl;
-    setupStats[normalized].trades.push(e);
+      // Update statistics
+      setupStats[normalized].count++;
+      setupStats[normalized].pnl += e.pnl;
+      setupStats[normalized].trades.push(e);
 
-    // Update display name if this is a more recent trade
-    if (new Date(e.date) > new Date(setupStats[normalized].lastDate)) {
-      setupStats[normalized].lastDate = e.date;
-      setupStats[normalized].display = displaySetup;
-    }
+      // Update display name if this is a more recent trade
+      if (new Date(e.date) > new Date(setupStats[normalized].lastDate)) {
+        setupStats[normalized].lastDate = e.date;
+        setupStats[normalized].display = displaySetup;
+      }
+    });
   });
 
   // Convert to array for sorting
@@ -632,7 +753,7 @@ function getMostTradedSetupInfo(filtered: any[]): { setup: string; count: number
 
 function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesModal, modalTrades, setModalTrades, modalSetup, setModalSetup }: {
   entries: any[];
-  period: 'week' | 'month' | 'year';
+  period:  'day' |'week' | 'month' | 'year' ;
   showTradesModal: boolean;
   setShowTradesModal: (open: boolean) => void;
   modalTrades: any[];
@@ -649,9 +770,12 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
   } else if (period === 'month') {
     start = startOfMonth(now)
     end = endOfMonth(now)
-  } else {
+  } else if (period === 'year') {
     start = startOfYear(now)
     end = endOfYear(now)
+  } else {
+    start = now
+    end = now
   }
 
   // Filter entries in range
@@ -675,20 +799,6 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
   const avgWin = wins.length > 0 ? wins.reduce((sum, e) => sum + e.pnl, 0) / wins.length : 0
   const avgLoss = losses.length > 0 ? losses.reduce((sum, e) => sum + Math.abs(e.pnl), 0) / losses.length : 0
   const rr = avgLoss > 0 ? avgWin / avgLoss : 0
-  
-  // Find best and worst trades with proper initialization
-  const bestTrade = filtered.length > 0 
-    ? filtered.reduce((best, e) => (e.pnl > best.pnl ? e : best), { pnl: -Infinity, date: '' })
-    : { pnl: 0, date: '' }
-  
-  // Helper function to safely format dates
-  const formatDate = (dateStr: string) => {
-    try {
-      return dateStr ? format(parseISO(dateStr), 'MMM d, yyyy') : 'No date'
-    } catch (error) {
-      return 'Invalid date'
-    }
-  }
 
   // Get initial capital from store
   const { settings } = useTradeStore();
@@ -700,16 +810,32 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
   const { maxDrawdown, maxDrawdownPercent } = getMaxDrawdownFromCurve(equityCurve);
   const mostTradedSetupInfo = getMostTradedSetupInfo(filtered);
 
+  // Calculate new metrics
+  const sharpeRatio = calculateSharpeRatio(filtered);
+  const expectancy = calculateExpectancy(filtered);
+  const avgHoldingTime = calculateAvgHoldingTime(filtered);
+  const volatility = calculateVolatility(filtered);
+  const bestTradeByReturn = getBestTradeByReturn(filtered);
+
   return (
     <>
       <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-2 xs:gap-3 sm:gap-4">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700">
-          <CardContent className="p-3 xs:p-4">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-md dark:border dark:border-gray-700 hover:shadow-md transition-shadow">
+          <CardContent className="p-3 xs:p-4 sm:p-6 flex flex-col h-full">
             <div className="flex items-center justify-between mb-1 xs:mb-2">
-              <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Total P&L</h3>
-              <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{totalPnL >= 0 ? '↑' : '↓'} {Math.abs(totalPnL).toFixed(2)}%</span>
+              <h3 className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-100">Total PnL</h3>
+              <span className={`text-[10px] xs:text-xs sm:text-sm font-medium ${totalPnL >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                {totalPnL >= 0 ? '↑' : '↓'} ${Math.abs(totalPnL).toFixed(2)}
+              </span>
             </div>
-            <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} dark:text-white`}>{totalPnL >= 0 ? '+' : ''}{totalPnL.toFixed(2)}%</div>
+            <div className={`text-lg xs:text-xl sm:text-2xl font-bold ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} dark:text-white`}>
+              {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
+            </div>
+            <div className="mt-1 xs:mt-2 text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              {initialCapital > 0 ? `${((totalPnL / initialCapital) * 100).toFixed(1)}% return` : 'No initial capital set'}
+              <br />
+              {entries.length} trades total
+            </div>
           </CardContent>
         </Card>
 
@@ -816,6 +942,12 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
                     equity: point.equity,
                     peak: point.peak
                   }))}>
+                    <defs>
+                      <linearGradient id="equityGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25}/>
+                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} />
                     <XAxis 
                       dataKey="date" 
@@ -834,9 +966,19 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
                         color: 'white',
                         fontSize: '12px'
                       }}
-                      formatter={(value: number) => [`$${value.toFixed(2)}`, 'Equity']}
+                      formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name === 'equity' ? 'Equity' : 'Peak']}
                       labelFormatter={(label) => `Trade ${Number(label) + 1}`}
                     />
+                    {/* Area fill under equity */}
+                    <Area
+                      type="monotone"
+                      dataKey="equity"
+                      stroke="none"
+                      fill="url(#equityGradient)"
+                      fillOpacity={1}
+                      isAnimationActive={false}
+                    />
+                    {/* Equity line */}
                     <Line 
                       type="monotone" 
                       dataKey="equity" 
@@ -845,6 +987,7 @@ function PerformanceMetrics({ entries, period, showTradesModal, setShowTradesMod
                       dot={false}
                       activeDot={{ r: 4, fill: CHART_COLORS.primary }}
                     />
+                    {/* Peak line */}
                     <Line 
                       type="monotone" 
                       dataKey="peak" 

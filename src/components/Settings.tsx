@@ -4,6 +4,7 @@ import { useTradeStore } from '../store/tradeStore'
 import { Moon, Sun, Download, Upload, Trash2, Info } from 'lucide-react'
 import { format } from 'date-fns'
 import localforage from 'localforage'
+import { ThemeToggle } from './ui/ThemeToggle'
 
 // Currency options
 const CURRENCIES = [
@@ -43,8 +44,8 @@ export function Settings() {
         if (value) {
           totalSize += JSON.stringify(value).length
           const item = await localforage.getItem(key)
-          if (item && item.lastSaved) {
-            const date = new Date(item.lastSaved)
+          if (item && typeof item === 'object' && 'lastSaved' in item) {
+            const date = new Date((item as any).lastSaved)
             if (date > lastModified) lastModified = date
           }
         }
@@ -96,15 +97,97 @@ export function Settings() {
       const data = JSON.parse(text)
       
       // Validate data structure
-      if (!data.entries || !data.settings) {
-        throw new Error('Invalid data format')
+      if (!data.entries) {
+        throw new Error('Invalid data format: Missing entries')
       }
 
-      // Update store with imported data
-      useTradeStore.setState({
-        entries: data.entries,
-        settings: data.settings
+      // Handle older data format
+      const processedEntries = data.entries.map((entry: any) => {
+        // Normalize date format if needed
+        let date = entry.date
+        if (date) {
+          try {
+            // Try to parse the date to ensure it's in ISO format
+            const parsedDate = new Date(date)
+            if (!isNaN(parsedDate.getTime())) {
+              date = parsedDate.toISOString().split('T')[0] // Convert to YYYY-MM-DD format
+            }
+          } catch (e) {
+            console.warn('Invalid date format:', date)
+          }
+        }
+
+        // Normalize PnL to ensure it's a number
+        let pnl = entry.pnl
+        if (typeof pnl === 'string') {
+          pnl = parseFloat(pnl)
+        }
+        if (isNaN(pnl)) {
+          pnl = 0
+        }
+
+        // Normalize outcome
+        let outcome = entry.outcome
+        if (typeof outcome === 'string') {
+          outcome = outcome.toLowerCase()
+          if (outcome !== 'win' && outcome !== 'loss') {
+            outcome = pnl >= 0 ? 'win' : 'loss'
+          }
+        } else {
+          outcome = pnl >= 0 ? 'win' : 'loss'
+        }
+
+        // Ensure all required fields exist with defaults
+        return {
+          id: entry.id || crypto.randomUUID(),
+          date: date || new Date().toISOString().split('T')[0],
+          lessons: entry.lessons || '',
+          setup: entry.setup || '',
+          coin: entry.coin || '',
+          pnl: pnl,
+          outcome: outcome,
+          tags: Array.isArray(entry.tags) ? entry.tags : [],
+          mood: entry.mood || 'neutral',
+          notes: entry.notes || '',
+          images: Array.isArray(entry.images) ? entry.images : [],
+          lastSaved: entry.lastSaved || new Date().toISOString(),
+          positionSize: typeof entry.positionSize === 'number' ? entry.positionSize : undefined,
+          leverage: typeof entry.leverage === 'number' ? entry.leverage : undefined,
+          link: entry.link || ''
+        }
       })
+
+      // Extract unique coins and setups from imported entries
+      const uniqueCoins = new Set<string>()
+      const uniqueSetups = new Set<string>()
+
+      processedEntries.forEach((entry: any) => {
+        if (entry.coin) uniqueCoins.add(entry.coin.toUpperCase())
+        if (entry.setup) uniqueSetups.add(entry.setup.trim())
+      })
+
+      // Handle older settings format
+      const defaultSettings = {
+        currency: 'USD',
+        dateFormat: 'MM/DD/YYYY',
+        theme: 'light',
+        initialCapital: 0,
+        customCoins: [],
+        customSetups: []
+      }
+
+      const importedSettings = data.settings || defaultSettings
+
+      // Update store with imported data and merge custom coins/setups
+      useTradeStore.setState((state) => ({
+        entries: processedEntries,
+        settings: {
+          ...defaultSettings,
+          ...importedSettings,
+          customCoins: [...new Set([...(state.settings.customCoins || []), ...Array.from(uniqueCoins)])],
+          customSetups: [...new Set([...(state.settings.customSetups || []), ...Array.from(uniqueSetups)])]
+        }
+      }))
 
       alert('Data imported successfully!')
     } catch (error) {
@@ -126,151 +209,137 @@ export function Settings() {
   }
 
   return (
-    <div className="p-6 space-y-6 dark:bg-gray-900">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          App Version: 1.0.0
+    <div className="p-4 sm:p-6 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            App Version: 1.0.0
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Theme Settings */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Theme</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => updateSettings({ theme: 'light' })}
-                className={`p-2 rounded-lg ${
-                  settings.theme === 'light'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                }`}
-              >
-                <Sun size={20} />
-              </button>
-              <button
-                onClick={() => updateSettings({ theme: 'dark' })}
-                className={`p-2 rounded-lg ${
-                  settings.theme === 'dark'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                }`}
-              >
-                <Moon size={20} />
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Currency Settings */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Currency</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <select
-              value={settings.currency}
-              onChange={(e) => updateSettings({ currency: e.target.value })}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              {CURRENCIES.map((currency) => (
-                <option key={currency.code} value={currency.code}>
-                  {currency.code} - {currency.name}
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-
-        {/* Date Format Settings */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Date Format</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <select
-              value={settings.dateFormat}
-              onChange={(e) => updateSettings({ dateFormat: e.target.value })}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              {DATE_FORMATS.map((format) => (
-                <option key={format.value} value={format.value}>
-                  {format.label}
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-
-        {/* Data Management */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Data Management</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex space-x-4">
-              <button
-                onClick={handleExport}
-                disabled={isExporting}
-                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-              >
-                <Download size={16} className="mr-2" />
-                {isExporting ? 'Exporting...' : 'Export Data'}
-              </button>
-              <label className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer">
-                <Upload size={16} className="mr-2" />
-                {isImporting ? 'Importing...' : 'Import Data'}
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleImport}
-                  className="hidden"
-                />
-              </label>
-            </div>
-            <button
-              onClick={handleClearData}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-            >
-              <Trash2 size={16} className="mr-2" />
-              {showConfirmClear ? 'Click again to confirm' : 'Clear All Data'}
-            </button>
-          </CardContent>
-        </Card>
-
-        {/* Storage Info */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Storage Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Total Entries:</span>
-                <span className="font-medium dark:text-white">{entries.length}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Preferences Card */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Preferences</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-6">
+                {/* Theme Toggle */}
+                <div>
+                  <div className="mb-2 font-medium text-gray-800 dark:text-gray-200">Theme</div>
+                  <ThemeToggle />
+                </div>
+                {/* Currency Select */}
+                <div>
+                  <div className="mb-2 font-medium text-gray-800 dark:text-gray-200">Currency</div>
+                  <select
+                    value={settings.currency}
+                    onChange={(e) => updateSettings({ currency: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                  >
+                    {CURRENCIES.map((currency) => (
+                      <option key={currency.code} value={currency.code}>
+                        {currency.name} ({currency.symbol})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Date Format Select */}
+                <div>
+                  <div className="mb-2 font-medium text-gray-800 dark:text-gray-200">Date Format</div>
+                  <select
+                    value={settings.dateFormat}
+                    onChange={(e) => updateSettings({ dateFormat: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                  >
+                    {DATE_FORMATS.map((format) => (
+                      <option key={format.value} value={format.value}>
+                        {format.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Data Management */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Data Management</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Storage Size:</span>
-                <span className="font-medium dark:text-white">{storageInfo?.size || 'Calculating...'}</span>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Export Data</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Download your trading data as JSON</p>
+                </div>
+                <button
+                  onClick={handleExport}
+                  disabled={isExporting}
+                  className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <Download size={20} />
+                </button>
               </div>
+
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Last Modified:</span>
-                <span className="font-medium dark:text-white">{storageInfo?.lastModified || 'Calculating...'}</span>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Import Data</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Import trading data from JSON file</p>
+                </div>
+                <label className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
+                  <Upload size={20} />
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImport}
+                    className="hidden"
+                    disabled={isImporting}
+                  />
+                </label>
               </div>
-              <button
-                onClick={calculateStorageInfo}
-                className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-800"
-              >
-                <Info size={16} className="mr-2" />
-                Refresh Info
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Clear All Data</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Permanently delete all trading data</p>
+                </div>
+                <button
+                  onClick={handleClearData}
+                  className={`p-2 rounded-lg transition-colors ${
+                    showConfirmClear
+                      ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
+
+              {storageInfo && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">Storage Info</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Size: {storageInfo.size} | Last Modified: {storageInfo.lastModified}
+                      </p>
+                    </div>
+                    <button
+                      onClick={calculateStorageInfo}
+                      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      <Info size={20} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
