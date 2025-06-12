@@ -253,32 +253,38 @@ function SetupPerformanceTable({ entries }: { entries: TradeEntry[] }) {
           />
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-700">
-              <th className="text-left py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Setup</th>
-              <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Trades</th>
-              <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Win Rate</th>
-              <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Avg P&L</th>
-              <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Total P&L</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedSetups.map((s, i) => (
-              <tr key={s.setup} className={i !== displayedSetups.length - 1 ? 'border-b border-gray-100 dark:border-gray-800' : ''}>
-                <td className="py-3 px-4 text-left font-medium text-gray-900 dark:text-white">{s.setup}</td>
-                <td className="py-3 px-4 text-center text-gray-900 dark:text-white">{s.trades}</td>
-                <td className="py-3 px-4 text-center">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${s.winRate >= 60 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{Math.round(s.winRate)}%</span>
-                </td>
-                <td className="py-3 px-4 text-center text-gray-900 dark:text-white">${Math.round(s.avgPnL).toLocaleString()}</td>
-                <td className={`py-3 px-4 text-center font-semibold ${s.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>${Math.round(s.totalPnL).toLocaleString()}</td>
+      {displayedSetups.length === 0 ? (
+        <div className="flex items-center justify-center h-32 text-gray-400 dark:text-gray-500 text-lg font-medium">
+          No data available yet
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Setup</th>
+                <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Trades</th>
+                <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Win Rate</th>
+                <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Avg P&L</th>
+                <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Total P&L</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {displayedSetups.map((s, i) => (
+                <tr key={s.setup} className={i !== displayedSetups.length - 1 ? 'border-b border-gray-100 dark:border-gray-800' : ''}>
+                  <td className="py-3 px-4 text-left font-medium text-gray-900 dark:text-white">{s.setup}</td>
+                  <td className="py-3 px-4 text-center text-gray-900 dark:text-white">{s.trades}</td>
+                  <td className="py-3 px-4 text-center">
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${s.winRate >= 60 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{Math.round(s.winRate)}%</span>
+                  </td>
+                  <td className="py-3 px-4 text-center text-gray-900 dark:text-white">${Math.round(s.avgPnL).toLocaleString()}</td>
+                  <td className={`py-3 px-4 text-center font-semibold ${s.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>${Math.round(s.totalPnL).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {setups.length > 5 && (
         <div className="mt-4 text-center">
           <button
@@ -691,7 +697,7 @@ function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex flex-col mb-2 border border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <span className="font-bold text-lg text-gray-900 dark:text-white">Risk Metrics</span>
-          <span className="text-xl"><TrendingDown className="w-5 h-5 text-red-500" /></span>
+         
         </div>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
@@ -712,7 +718,7 @@ function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex flex-col mb-2 border border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <span className="font-bold text-lg text-gray-900 dark:text-white">Trade Quality</span>
-          <span className="text-xl"><Star className="w-5 h-5 text-yellow-500" /></span>
+   
         </div>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
@@ -799,24 +805,24 @@ function CoinPerformanceTable({ entries }: { entries: TradeEntry[] }) {
           />
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-700">
-              <th className="text-left py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Coin</th>
-              <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Trades</th>
-              <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Win Rate</th>
-              <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Avg P&L</th>
-              <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Total P&L</th>
-            </tr>
-          </thead>
-          <tbody>
-            {showNoCoinsMessage ? (
-              <tr>
-                <td colSpan={5} className="py-8 text-center text-gray-400 dark:text-gray-500">No coins displayed</td>
+      {displayedCoins.length === 0 ? (
+        <div className="flex items-center justify-center h-32 text-gray-400 dark:text-gray-500 text-lg font-medium">
+          No data available yet
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Coin</th>
+                <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Trades</th>
+                <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Win Rate</th>
+                <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Avg P&L</th>
+                <th className="text-center py-2 px-4 font-semibold text-gray-700 dark:text-gray-300">Total P&L</th>
               </tr>
-            ) : (
-              displayedCoins.map((c, i) => (
+            </thead>
+            <tbody>
+              {displayedCoins.map((c, i) => (
                 <tr key={c.coin} className={i !== displayedCoins.length - 1 ? 'border-b border-gray-100 dark:border-gray-800' : ''}>
                   <td className="py-3 px-4 text-left font-medium text-gray-900 dark:text-white">{c.coin}</td>
                   <td className="py-3 px-4 text-center text-gray-900 dark:text-white">{c.trades}</td>
@@ -826,11 +832,11 @@ function CoinPerformanceTable({ entries }: { entries: TradeEntry[] }) {
                   <td className="py-3 px-4 text-center text-gray-900 dark:text-white">${Math.round(c.avgPnL).toLocaleString()}</td>
                   <td className={`py-3 px-4 text-center font-semibold ${c.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>${Math.round(c.totalPnL).toLocaleString()}</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {coins.length > 5 && (
         <div className="mt-4 text-center">
           <button
@@ -850,7 +856,7 @@ export function Analytics() {
   const { entries } = useTradeStore()
 
   // Add granularity state
-  const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('monthly')
+  const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily')
 
   // Calculate summary metrics
   const summaryMetrics = useMemo(() => {
@@ -1084,9 +1090,9 @@ export function Analytics() {
         {/* Granularity Selector */}
         <div className="flex items-center gap-2 mb-4">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View:</span>
-          <button onClick={() => setGranularity('daily')} className={`px-3 py-1 rounded-lg text-sm font-semibold border ${granularity === 'daily' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>Daily</button>
-          <button onClick={() => setGranularity('weekly')} className={`px-3 py-1 rounded-lg text-sm font-semibold border ${granularity === 'weekly' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>Weekly</button>
-          <button onClick={() => setGranularity('monthly')} className={`px-3 py-1 rounded-lg text-sm font-semibold border ${granularity === 'monthly' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>Monthly</button>
+          <button className="px-3 py-1 rounded-lg text-sm font-semibold border bg-blue-600 text-white" disabled>Daily</button>
+          <button className="px-3 py-1 rounded-lg text-sm font-semibold border bg-white dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700" disabled>Weekly</button>
+          <button className="px-3 py-1 rounded-lg text-sm font-semibold border bg-white dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700" disabled>Monthly</button>
         </div>
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1096,64 +1102,70 @@ export function Analytics() {
               <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">P&L Trend</CardTitle>
             </CardHeader>
             <CardContent className="h-[300px] sm:h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={pnlData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={COLORS.chart.grid} />
-                  <XAxis 
-                    dataKey="period"
-                    interval={0}
-                    tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
-                    tickFormatter={(value) => {
-                      if (granularity === 'monthly') return value;
-                      return value;
-                    }}
-                  />
-                  <YAxis 
-                    tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
-                    tickFormatter={(value) => `${value}%`}
-                  />
-                  {/* Area under the line */}
-                  <Area 
-                    type="monotone"
-                    dataKey="pnl"
-                    stroke={COLORS.chart.accent}
-                    fill={COLORS.chart.accent}
-                    fillOpacity={0.1}
-                    isAnimationActive={true}
-                  />
-                  {/* Average reference line */}
-                  <ReferenceLine 
-                    y={pnlData.length > 0 ? pnlData.reduce((a, b) => a + b.pnl, 0) / pnlData.length : 0}
-                    label="Avg"
-                    stroke="#8884d8"
-                    strokeDasharray="3 3"
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: COLORS.chart.tooltip,
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: 'white',
-                      fontSize: '13px'
-                    }}
-                    formatter={(value: any, name: any) => {
-                      let val = value;
-                      if (Array.isArray(val)) val = val[0];
-                      return [typeof val === 'number' ? `${val.toFixed(2)}%` : String(val), 'P&L'] as [React.ReactNode, string];
-                    }}
-                    labelFormatter={(label: string) => `Period: ${label}`}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="pnl" 
-                    stroke={COLORS.chart.accent} 
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: COLORS.chart.accent }}
-                    activeDot={{ r: 7, fill: COLORS.chart.accent }}
-                    isAnimationActive={true}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {pnlData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-lg font-medium">
+                  No data available yet
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={pnlData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={COLORS.chart.grid} />
+                    <XAxis 
+                      dataKey="period"
+                      interval={0}
+                      tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
+                      tickFormatter={(value) => {
+                        if (granularity === 'monthly') return value;
+                        return value;
+                      }}
+                    />
+                    <YAxis 
+                      tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    {/* Area under the line */}
+                    <Area 
+                      type="monotone"
+                      dataKey="pnl"
+                      stroke={COLORS.chart.accent}
+                      fill={COLORS.chart.accent}
+                      fillOpacity={0.1}
+                      isAnimationActive={true}
+                    />
+                    {/* Average reference line */}
+                    <ReferenceLine 
+                      y={pnlData.length > 0 ? pnlData.reduce((a, b) => a + b.pnl, 0) / pnlData.length : 0}
+                      label="Avg"
+                      stroke="#8884d8"
+                      strokeDasharray="3 3"
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: COLORS.chart.tooltip,
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: 'white',
+                        fontSize: '13px'
+                      }}
+                      formatter={(value: any, name: any) => {
+                        let val = value;
+                        if (Array.isArray(val)) val = val[0];
+                        return [typeof val === 'number' ? `${val.toFixed(2)}%` : String(val), 'P&L'] as [React.ReactNode, string];
+                      }}
+                      labelFormatter={(label: string) => `Period: ${label}`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="pnl" 
+                      stroke={COLORS.chart.accent} 
+                      strokeWidth={2}
+                      dot={{ r: 4, fill: COLORS.chart.accent }}
+                      activeDot={{ r: 7, fill: COLORS.chart.accent }}
+                      isAnimationActive={true}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
@@ -1163,64 +1175,70 @@ export function Analytics() {
               <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Win Rate Trend</CardTitle>
             </CardHeader>
             <CardContent className="h-[300px] sm:h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={pnlData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={COLORS.chart.grid} />
-                  <XAxis 
-                    dataKey="period"
-                    interval={0}
-                    tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
-                    tickFormatter={(value) => {
-                      if (granularity === 'monthly') return value;
-                      return value;
-                    }}
-                  />
-                  <YAxis 
-                    tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
-                    tickFormatter={(value) => `${value}%`}
-                  />
-                  {/* Area under the line */}
-                  <Area 
-                    type="monotone"
-                    dataKey="winRate"
-                    stroke={COLORS.chart.profit}
-                    fill={COLORS.chart.profit}
-                    fillOpacity={0.1}
-                    isAnimationActive={true}
-                  />
-                  {/* Average reference line */}
-                  <ReferenceLine 
-                    y={pnlData.length > 0 ? pnlData.reduce((a, b) => a + b.winRate, 0) / pnlData.length : 0}
-                    label="Avg"
-                    stroke="#10B981"
-                    strokeDasharray="3 3"
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: COLORS.chart.tooltip,
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: 'white',
-                      fontSize: '13px'
-                    }}
-                    formatter={(value: any, name: any) => {
-                      let val = value;
-                      if (Array.isArray(val)) val = val[0];
-                      return [typeof val === 'number' ? `${val.toFixed(1)}%` : String(val), 'Win Rate'] as [React.ReactNode, string];
-                    }}
-                    labelFormatter={(label: string) => `Period: ${label}`}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="winRate" 
-                    stroke={COLORS.chart.profit} 
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: COLORS.chart.profit }}
-                    activeDot={{ r: 7, fill: COLORS.chart.profit }}
-                    isAnimationActive={true}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {pnlData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-lg font-medium">
+                  No data available yet
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={pnlData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={COLORS.chart.grid} />
+                    <XAxis 
+                      dataKey="period"
+                      interval={0}
+                      tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
+                      tickFormatter={(value) => {
+                        if (granularity === 'monthly') return value;
+                        return value;
+                      }}
+                    />
+                    <YAxis 
+                      tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    {/* Area under the line */}
+                    <Area 
+                      type="monotone"
+                      dataKey="winRate"
+                      stroke={COLORS.chart.profit}
+                      fill={COLORS.chart.profit}
+                      fillOpacity={0.1}
+                      isAnimationActive={true}
+                    />
+                    {/* Average reference line */}
+                    <ReferenceLine 
+                      y={pnlData.length > 0 ? pnlData.reduce((a, b) => a + b.winRate, 0) / pnlData.length : 0}
+                      label="Avg"
+                      stroke="#10B981"
+                      strokeDasharray="3 3"
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: COLORS.chart.tooltip,
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: 'white',
+                        fontSize: '13px'
+                      }}
+                      formatter={(value: any, name: any) => {
+                        let val = value;
+                        if (Array.isArray(val)) val = val[0];
+                        return [typeof val === 'number' ? `${val.toFixed(1)}%` : String(val), 'Win Rate'] as [React.ReactNode, string];
+                      }}
+                      labelFormatter={(label: string) => `Period: ${label}`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="winRate" 
+                      stroke={COLORS.chart.profit} 
+                      strokeWidth={2}
+                      dot={{ r: 4, fill: COLORS.chart.profit }}
+                      activeDot={{ r: 7, fill: COLORS.chart.profit }}
+                      isAnimationActive={true}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -1239,30 +1257,36 @@ export function Analytics() {
             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Mood Impact</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px] sm:h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={moodImpact} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={COLORS.chart.grid} />
-                <XAxis 
-                  dataKey="mood" 
-                  tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
-                />
-                <YAxis 
-                  tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
-                  tickFormatter={(value) => `${value}%`}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: COLORS.chart.tooltip,
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: 'white',
-                    fontSize: '12px'
-                  }}
-                  formatter={(value: number) => [`${value.toFixed(1)}%`, 'Win Rate']}
-                />
-                <Bar dataKey="winRate" fill={COLORS.chart.accent} />
-              </BarChart>
-            </ResponsiveContainer>
+            {moodImpact.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-lg font-medium">
+                No data available yet
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={moodImpact} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={COLORS.chart.grid} />
+                  <XAxis 
+                    dataKey="mood" 
+                    tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
+                  />
+                  <YAxis 
+                    tick={{ fill: COLORS.text.secondary, fontSize: 12 }}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: COLORS.chart.tooltip,
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: 'white',
+                      fontSize: '12px'
+                    }}
+                    formatter={(value: number) => [`${value.toFixed(1)}%`, 'Win Rate']}
+                  />
+                  <Bar dataKey="winRate" fill={COLORS.chart.accent} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
