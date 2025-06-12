@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
-import { useTradeStore } from '@/store/tradeStore'
+import { useTradeStore, type TradeEntry } from '@/store/tradeStore'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay } from 'date-fns'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
@@ -50,24 +50,6 @@ interface FormErrors {
   pnl?: string
   lessons?: string
   tags?: string
-}
-
-interface TradeEntry {
-  id: string
-  date: string
-  lessons: string
-  setup: string
-  coin: string
-  pnl: number
-  outcome: 'win' | 'loss'
-  tags: string[]
-  mood: string
-  notes: string
-  images: string[]
-  lastSaved?: string
-  positionSize?: number
-  leverage?: number
-  link: string
 }
 
 interface TradeEntryForm {

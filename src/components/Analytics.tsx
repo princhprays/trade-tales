@@ -273,7 +273,7 @@ function SetupPerformanceTable({ entries }: { entries: TradeEntry[] }) {
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${s.winRate >= 60 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{Math.round(s.winRate)}%</span>
                 </td>
                 <td className="py-3 px-4 text-center text-gray-900 dark:text-white">${Math.round(s.avgPnL).toLocaleString()}</td>
-                <td className="py-3 px-4 text-center font-semibold text-green-600">${Math.round(s.totalPnL).toLocaleString()}</td>
+                <td className={`py-3 px-4 text-center font-semibold ${s.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>${Math.round(s.totalPnL).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -327,7 +327,7 @@ function AdvancedMetricsCards({ entries }: { entries: TradeEntry[] }) {
       <Card className="transition-shadow hover:shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground">Expectancy</CardTitle>
-          <Target className="w-4 h-4 text-green-500" />
+          <Target className="w-4 h-4 text-yellow-500" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -566,25 +566,25 @@ function AnalyticsSummaryCards({ entries }: { entries: TradeEntry[] }) {
       isPercent: false,
     },
     {
-      key: 'avgTrade',
-      label: 'Avg Trade',
-      icon: <TrendingUp className="w-6 h-6 text-purple-500" />, // purple
-      value: entries.length > 0 ? entries.reduce((sum, e) => sum + e.pnl, 0) / entries.length : 0,
-      prev: lastMonthEntries.length > 0 ? lastMonthEntries.reduce((sum, e) => sum + e.pnl, 0) / lastMonthEntries.length : 0,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
+      key: 'volatility',
+      label: 'Volatility',
+      icon: <AlertTriangle className="w-6 h-6 text-orange-500" />, // orange
+      value: calculateVolatility(entries) || 0,
+      prev: calculateVolatility(lastMonthEntries) || 0,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
       isCurrency: true,
       isPercent: false,
     },
     {
-      key: 'profitFactor',
-      label: 'Profit Factor',
-      icon: <Award className="w-6 h-6 text-yellow-500" />, // yellow
-      value: calculateProfitFactor(entries),
-      prev: calculateProfitFactor(lastMonthEntries),
+      key: 'expectancy',
+      label: 'Expectancy',
+      icon: <Target className="w-6 h-6 text-yellow-500" />, // yellow
+      value: calculateExpectancy(entries) || 0,
+      prev: calculateExpectancy(lastMonthEntries) || 0,
       color: 'text-yellow-600',
       bg: 'bg-yellow-50',
-      isCurrency: false,
+      isCurrency: true,
       isPercent: false,
     },
     {
@@ -824,7 +824,7 @@ function CoinPerformanceTable({ entries }: { entries: TradeEntry[] }) {
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${c.winRate >= 60 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{Math.round(c.winRate)}%</span>
                   </td>
                   <td className="py-3 px-4 text-center text-gray-900 dark:text-white">${Math.round(c.avgPnL).toLocaleString()}</td>
-                  <td className="py-3 px-4 text-center font-semibold text-green-600">${Math.round(c.totalPnL).toLocaleString()}</td>
+                  <td className={`py-3 px-4 text-center font-semibold ${c.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>${Math.round(c.totalPnL).toLocaleString()}</td>
                 </tr>
               ))
             )}
