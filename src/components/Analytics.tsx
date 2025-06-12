@@ -33,7 +33,7 @@ import {
   endOfDay,
   isWithinInterval 
 } from 'date-fns'
-import { TrendingUp, TrendingDown, Calendar, Tag, Smile, Clock, DollarSign, Target, BarChart2, ArrowUpRight, ArrowDownRight, Star, AlertTriangle, Award, Brain, Search, ChevronDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, Calendar, Tag, Smile, Clock, DollarSign, Target, BarChart2, ArrowUpRight, ArrowDownRight, Star, AlertTriangle, Award, Brain, Search, ChevronDown, Zap } from 'lucide-react'
 import { normalizeTradeName } from '../store/tradeStore'
 import {
   calculateSharpeRatio,
@@ -297,9 +297,10 @@ function SetupPerformanceTable({ entries }: { entries: TradeEntry[] }) {
 function AdvancedMetricsCards({ entries }: { entries: TradeEntry[] }) {
   const sharpeRatio = calculateSharpeRatio(entries) || 0;
   const expectancy = calculateExpectancy(entries) || 0;
-  const avgHoldingTime = calculateAvgHoldingTime(entries) || 0;
   const volatility = calculateVolatility(entries) || 0;
   const bestTrade = getBestTradeByReturn(entries) || { return: 0, coin: 'N/A', setup: 'N/A' };
+  const losses = entries.filter(e => e.outcome === 'loss');
+  const avgLoss = losses.length > 0 ? losses.reduce((sum, e) => sum + e.pnl, 0) / losses.length : 0;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -341,25 +342,6 @@ function AdvancedMetricsCards({ entries }: { entries: TradeEntry[] }) {
         </CardContent>
       </Card>
 
-      {/* Average Holding Time */}
-      <Card className="transition-shadow hover:shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground">Avg Holding Time</CardTitle>
-          <Clock className="w-4 h-4 text-purple-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {avgHoldingTime.toFixed(1)}h
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Average trade duration
-          </p>
-          <CardDescription>
-            Average time trades are held open.
-          </CardDescription>
-        </CardContent>
-      </Card>
-
       {/* Volatility */}
       <Card className="transition-shadow hover:shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -394,33 +376,6 @@ function AdvancedMetricsCards({ entries }: { entries: TradeEntry[] }) {
           </p>
           <CardDescription>
             Your highest returning trade.
-          </CardDescription>
-        </CardContent>
-      </Card>
-
-      {/* Risk Metrics */}
-      <Card className="transition-shadow hover:shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground">Risk Metrics</CardTitle>
-          <AlertTriangle className="w-4 h-4 text-red-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Max Drawdown:</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {entries.length > 0 ? Math.abs(Math.min(...entries.map(e => e.pnl))).toFixed(2) : '0.00'}%
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Risk/Reward:</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {entries.length > 0 ? (Math.abs(Math.max(...entries.map(e => e.pnl))) / Math.abs(Math.min(...entries.map(e => e.pnl)))).toFixed(2) : '0.00'}
-              </span>
-            </div>
-          </div>
-          <CardDescription>
-            Key risk indicators for your trading.
           </CardDescription>
         </CardContent>
       </Card>
@@ -736,7 +691,7 @@ function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex flex-col mb-2 border border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <span className="font-bold text-lg text-gray-900 dark:text-white">Risk Metrics</span>
-          <span className="text-xl"><span className="inline-block align-middle"><AlertTriangle className="w-5 h-5 text-yellow-500" /></span></span>
+          <span className="text-xl"><TrendingDown className="w-5 h-5 text-red-500" /></span>
         </div>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
@@ -745,11 +700,11 @@ function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">Risk/Reward</span>
-            <span className="font-semibold text-gray-900 dark:text-white">{riskReward.toFixed(2)}</span>
+            <span className="font-semibold text-gray-900 dark:text-white"><TrendingUp className="w-4 h-4 inline mr-1 text-blue-500" />{riskReward.toFixed(2)}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">Consecutive Wins</span>
-            <span className="font-semibold text-green-600">{consecutiveWins}</span>
+            <span className="font-semibold text-green-600"><Smile className="w-4 h-4 inline mr-1 text-green-500" />{consecutiveWins}</span>
           </div>
         </div>
       </div>
@@ -757,20 +712,20 @@ function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex flex-col mb-2 border border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <span className="font-bold text-lg text-gray-900 dark:text-white">Trade Quality</span>
-          <span className="text-xl"><span className="inline-block align-middle"><Award className="w-5 h-5 text-blue-400" /></span></span>
+          <span className="text-xl"><Star className="w-5 h-5 text-yellow-500" /></span>
         </div>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">Avg Win</span>
-            <span className="font-semibold text-green-600">${avgWin >= 0 ? '' : '-'}{Math.abs(avgWin).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            <span className="font-semibold text-green-600"><ArrowUpRight className="w-4 h-4 inline mr-1 text-green-500" />{avgWin >= 0 ? '' : '-'}{Math.abs(avgWin).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">Avg Loss</span>
-            <span className="font-semibold text-red-500">{avgLoss < 0 ? '-' : ''}${Math.abs(avgLoss).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            <span className="font-semibold text-red-500"><ArrowDownRight className="w-4 h-4 inline mr-1 text-red-500" />{avgLoss < 0 ? '-' : ''}{Math.abs(avgLoss).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-700 dark:text-gray-300">Profit Factor</span>
-            <span className="font-semibold text-gray-900 dark:text-white">{profitFactor.toFixed(2)}</span>
+            <span className="font-semibold text-gray-900 dark:text-white"><Award className="w-4 h-4 inline mr-1 text-yellow-500" />{profitFactor.toFixed(2)}</span>
           </div>
         </div>
       </div>
@@ -778,7 +733,7 @@ function BottomMetricsCards({ entries }: { entries: TradeEntry[] }) {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex flex-col border border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <span className="font-bold text-lg text-gray-900 dark:text-white">Performance Score</span>
-          <span className="text-xl"><span className="inline-block align-middle"><Brain className="w-5 h-5 text-purple-500" /></span></span>
+          <span className="text-xl"><Zap className="w-5 h-5 text-purple-500" /></span>
         </div>
         <div className="flex flex-col items-center justify-center py-2">
           <span className="text-4xl font-bold text-purple-600 mb-1">{perfScore}</span>
