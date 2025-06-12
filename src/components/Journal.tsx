@@ -12,12 +12,14 @@ import { DateRangePicker } from '@/components/ui/date-range-picker'
 import type { DateRange } from 'react-day-picker'
 import { Dialog as PreviewDialog, DialogContent as PreviewDialogContent } from '@/components/ui/dialog'
 import { SetupInput } from '@/components/ui/setup-input'
+import { CoinInput } from '@/components/ui/coin-input'
 
 interface TradeEntry {
   id: string
   date: string
   lessons: string
   setup: string[]
+  coin: string
   pnl: number
   outcome: 'win' | 'loss'
   tags: string[]
@@ -83,8 +85,10 @@ export function Journal({ onNavigate }: JournalProps) {
     return entries.filter(entry => {
       const matchesSearch = searchQuery === '' || 
         entry.setup.some(setup => setup.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        entry.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        entry.notes?.toLowerCase().includes(searchQuery.toLowerCase())
+        entry.notes?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (entry.coin && entry.coin.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (entry.mood && entry.mood.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        entry.outcome.toLowerCase().includes(searchQuery.toLowerCase())
 
       const matchesDateRange = !dateRange?.from || !dateRange?.to || 
         isWithinInterval(parseISO(entry.date), {
@@ -347,15 +351,15 @@ export function Journal({ onNavigate }: JournalProps) {
 
   // CSV Export functions
   const generateCSV = (entries: TradeEntry[]) => {
-    const headers = ['Date', 'Setup', 'PnL', 'Outcome', 'Tags', 'Mood', 'Lessons', 'Notes']
+    const headers = ['Date', 'Coin', 'Setup', 'PnL', 'Outcome', 'Mood', 'Lessons', 'Notes']
     const csvContent = [
       headers.join(','),
       ...entries.map(entry => [
         format(parseISO(entry.date), 'yyyy-MM-dd'),
+        entry.coin || '',
         `"${entry.setup.join('; ')}"`,
         entry.pnl,
         entry.outcome,
-        `"${entry.tags.join('; ')}"`,
         entry.mood,
         `"${entry.lessons.replace(/"/g, '""')}"`,
         `"${(entry.notes || '').replace(/"/g, '""')}"`
@@ -448,7 +452,7 @@ export function Journal({ onNavigate }: JournalProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="text"
-              placeholder="Search setups, tags, or notes..."
+              placeholder="Search coins, setups, mood or outcome..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
@@ -518,13 +522,19 @@ export function Journal({ onNavigate }: JournalProps) {
                       Date
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Coin
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Setup
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       PnL
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Tags
+                      Outcome
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Mood
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Actions
@@ -546,6 +556,11 @@ export function Journal({ onNavigate }: JournalProps) {
                         {format(parseISO(entry.date), 'MMM d, yyyy')}
                       </td>
                       <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300">
+                          {entry.coin || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {entry.setup.map((setup, index) => (
                             <span
@@ -563,16 +578,18 @@ export function Journal({ onNavigate }: JournalProps) {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {entry.tags.map((tag, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
+                        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                          entry.outcome === 'win' 
+                            ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300' 
+                            : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+                        }`}>
+                          {entry.outcome.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-300">
+                          {entry.mood || 'N/A'}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -651,6 +668,16 @@ export function Journal({ onNavigate }: JournalProps) {
                       <SetupInput
                         value={editingEntry.setup}
                         onChange={(value) => handleSaveEdit({ ...editingEntry, setup: value })}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Coin
+                      </label>
+                      <CoinInput
+                        value={editingEntry.coin}
+                        onChange={(value) => handleSaveEdit({ ...editingEntry, coin: value })}
                         className="w-full"
                       />
                     </div>
