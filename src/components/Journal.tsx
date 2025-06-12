@@ -71,6 +71,7 @@ export function Journal({ onNavigate }: JournalProps) {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const [isDraggingUpload, setIsDraggingUpload] = useState(false)
+  const [exportOption, setExportOption] = useState<'all' | 'page'>('all')
 
   const allTags = useMemo(() => {
     const tags = new Set<string>()
@@ -381,23 +382,37 @@ export function Journal({ onNavigate }: JournalProps) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trading Journal</h1>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <select
+                value={exportOption}
+                onChange={e => setExportOption(e.target.value as 'all' | 'page')}
+                className="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ height: '36px' }}
+                aria-label="Export option"
+              >
+                <option value="all">Export all</option>
+                <option value="page">Export current page</option>
+              </select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-3"
+                onClick={() => {
+                  const filtered = filterEntries(entries)
+                  const toExport = exportOption === 'all' ? filtered : paginatedEntries
+                  const csv = generateCSV(toExport)
+                  downloadCSV(csv, 'trading-journal.csv')
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
             <DateRangePicker
               value={dateRange}
               onChange={setDateRange}
               className="w-full sm:w-auto"
             />
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-3"
-              onClick={() => {
-                const csv = generateCSV(entries)
-                downloadCSV(csv, 'trading-journal.csv')
-              }}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
           </div>
         </div>
 
