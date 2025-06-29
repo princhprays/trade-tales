@@ -13,6 +13,7 @@ import type { DateRange } from 'react-day-picker'
 import { Dialog as PreviewDialog, DialogContent as PreviewDialogContent } from '@/components/ui/dialog'
 import { SetupInput } from '@/components/ui/setup-input'
 import { CoinInput } from '@/components/ui/coin-input'
+import { RulesSelector } from '@/components/RulesSelector'
 
 interface TradeEntry {
   id: string
@@ -27,6 +28,7 @@ interface TradeEntry {
   images?: string[]
   notes?: string
   link?: string
+  selectedRules?: string[]
 }
 
 interface SortConfig {
@@ -189,14 +191,20 @@ export function Journal({ onNavigate }: JournalProps) {
     setIsEditing(true)
   }
 
-  const handleSaveEdit = (updatedEntry: Partial<TradeEntry>) => {
+  const handleFormChange = (updatedEntry: Partial<TradeEntry>) => {
     if (editingEntry) {
       const entryToUpdate = {
         ...editingEntry,
         ...updatedEntry,
         setup: Array.isArray(updatedEntry.setup) ? updatedEntry.setup : typeof updatedEntry.setup === 'string' ? [updatedEntry.setup] : []
       }
-      updateEntry(editingEntry.id, entryToUpdate)
+      setEditingEntry(entryToUpdate)
+    }
+  }
+
+  const handleSaveEdit = () => {
+    if (editingEntry) {
+      updateEntry(editingEntry.id, editingEntry)
       toast({
         title: 'Success',
         description: 'Trade entry updated',
@@ -335,7 +343,7 @@ export function Journal({ onNavigate }: JournalProps) {
         })
       })
     )
-    handleSaveEdit({ ...editingEntry, images: [...(editingEntry.images || []), ...processedFiles] })
+    handleFormChange({ ...editingEntry, images: [...(editingEntry.images || []), ...processedFiles] })
   }
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editingEntry || !e.target.files) return
@@ -351,11 +359,11 @@ export function Journal({ onNavigate }: JournalProps) {
         })
       })
     )
-    handleSaveEdit({ ...editingEntry, images: [...(editingEntry.images || []), ...processedFiles] })
+    handleFormChange({ ...editingEntry, images: [...(editingEntry.images || []), ...processedFiles] })
   }
   const handleRemoveImage = (index: number) => {
     if (!editingEntry) return
-    handleSaveEdit({ ...editingEntry, images: editingEntry.images?.filter((_, i) => i !== index) })
+    handleFormChange({ ...editingEntry, images: editingEntry.images?.filter((_, i) => i !== index) })
   }
 
   // CSV Export functions
@@ -399,9 +407,10 @@ export function Journal({ onNavigate }: JournalProps) {
               <select
                 value={exportOption}
                 onChange={e => setExportOption(e.target.value as 'all' | 'page')}
-                className="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="border rounded px-2 py-1 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ height: '36px' }}
                 aria-label="Export option"
+                disabled={entries.length === 0}
               >
                 <option value="all">Export all</option>
                 <option value="page">Export current page</option>
@@ -416,10 +425,17 @@ export function Journal({ onNavigate }: JournalProps) {
                   const csv = generateCSV(toExport)
                   downloadCSV(csv, 'trading-journal.csv')
                 }}
+                disabled={entries.length === 0}
+                title={entries.length === 0 ? "No trade entries to export" : "Export trade data to CSV"}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
+              {entries.length === 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                  No data to export
+                </span>
+              )}
             </div>
             <DateRangePicker
               value={dateRange}
@@ -679,7 +695,9 @@ export function Journal({ onNavigate }: JournalProps) {
             setEditingEntry(null)
           }
         }}>
-          <DialogContent className="sm:max-w-[600px] md:max-w-[800px]" aria-labelledby="edit-dialog-title" aria-describedby="edit-dialog-description">
+          <DialogContent
+            className="sm:max-w-[95vw] md:max-w-[800px] p-4 w-full max-h-[90vh] overflow-y-auto"
+          >
             <DialogHeader>
               <DialogTitle id="edit-dialog-title" className="text-lg sm:text-xl font-semibold">
                 {isViewMode ? 'Trade Entry Details' : 'Edit Trade Entry'}
@@ -693,7 +711,7 @@ export function Journal({ onNavigate }: JournalProps) {
                 {isViewMode ? (
                   // View Mode Content
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Setup</label>
@@ -815,6 +833,17 @@ export function Journal({ onNavigate }: JournalProps) {
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Rules Section */}
+                    <div className="mt-6">
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-white border-b pb-0.5 mb-3">Trading Rules Followed</h3>
+                      <RulesSelector
+                        selectedRules={editingEntry.selectedRules || []}
+                        onRulesChange={(ruleIds) => handleFormChange({ ...editingEntry, selectedRules: ruleIds })}
+                        className="mt-2"
+                      />
+                    </div>
+                    
                     <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-4">
                       <Button
                         variant="outline"
@@ -838,7 +867,7 @@ export function Journal({ onNavigate }: JournalProps) {
                 ) : (
                   // Edit Mode Content
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -846,7 +875,7 @@ export function Journal({ onNavigate }: JournalProps) {
                           </label>
                           <SetupInput
                             value={editingEntry.setup}
-                            onChange={(value) => handleSaveEdit({ ...editingEntry, setup: value })}
+                            onChange={(value) => handleFormChange({ ...editingEntry, setup: value })}
                             className="w-full"
                           />
                         </div>
@@ -856,7 +885,7 @@ export function Journal({ onNavigate }: JournalProps) {
                           </label>
                           <CoinInput
                             value={editingEntry.coin}
-                            onChange={(value) => handleSaveEdit({ ...editingEntry, coin: value })}
+                            onChange={(value) => handleFormChange({ ...editingEntry, coin: value })}
                             className="w-full"
                           />
                         </div>
@@ -867,7 +896,7 @@ export function Journal({ onNavigate }: JournalProps) {
                           <input
                             type="number"
                             value={editingEntry.pnl}
-                            onChange={(e) => handleSaveEdit({ ...editingEntry, pnl: Number(e.target.value) })}
+                            onChange={(e) => handleFormChange({ ...editingEntry, pnl: Number(e.target.value) })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -877,7 +906,7 @@ export function Journal({ onNavigate }: JournalProps) {
                           </label>
                           <select
                             value={editingEntry.outcome}
-                            onChange={(e) => handleSaveEdit({ ...editingEntry, outcome: e.target.value as 'win' | 'loss' })}
+                            onChange={(e) => handleFormChange({ ...editingEntry, outcome: e.target.value as 'win' | 'loss' })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             <option value="win">Win</option>
@@ -890,7 +919,7 @@ export function Journal({ onNavigate }: JournalProps) {
                           </label>
                           <select
                             value={editingEntry.mood || ''}
-                            onChange={(e) => handleSaveEdit({ ...editingEntry, mood: e.target.value })}
+                            onChange={(e) => handleFormChange({ ...editingEntry, mood: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             <option value="great">Great</option>
@@ -907,7 +936,7 @@ export function Journal({ onNavigate }: JournalProps) {
                           <input
                             type="url"
                             value={editingEntry.link || ''}
-                            onChange={(e) => handleSaveEdit({ ...editingEntry, link: e.target.value })}
+                            onChange={(e) => handleFormChange({ ...editingEntry, link: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter trade link (e.g. chart, analysis, etc.)"
                           />
@@ -920,7 +949,7 @@ export function Journal({ onNavigate }: JournalProps) {
                           </label>
                           <textarea
                             value={editingEntry.lessons || ''}
-                            onChange={(e) => handleSaveEdit({ ...editingEntry, lessons: e.target.value })}
+                            onChange={(e) => handleFormChange({ ...editingEntry, lessons: e.target.value })}
                             className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                           />
                         </div>
@@ -930,7 +959,7 @@ export function Journal({ onNavigate }: JournalProps) {
                           </label>
                           <textarea
                             value={editingEntry.notes || ''}
-                            onChange={(e) => handleSaveEdit({ ...editingEntry, notes: e.target.value })}
+                            onChange={(e) => handleFormChange({ ...editingEntry, notes: e.target.value })}
                             className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                           />
                         </div>
@@ -990,6 +1019,7 @@ export function Journal({ onNavigate }: JournalProps) {
                         </div>
                       </div>
                     </div>
+                    
                     <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-4">
                       <Button
                         variant="outline"
@@ -1003,11 +1033,7 @@ export function Journal({ onNavigate }: JournalProps) {
                         Cancel
                       </Button>
                       <Button
-                        onClick={() => {
-                          setIsEditing(false)
-                          setIsViewMode(false)
-                          setEditingEntry(null)
-                        }}
+                        onClick={handleSaveEdit}
                         className="w-full sm:w-auto"
                       >
                         Save Changes

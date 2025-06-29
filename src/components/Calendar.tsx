@@ -1,14 +1,17 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { useTradeStore, type TradeEntry } from '@/store/tradeStore'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay, parseISO, addMonths, subMonths } from 'date-fns'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2 } from 'lucide-react'
 import { CoinInput } from '@/components/ui/coin-input'
 import { SetupInput } from '@/components/ui/setup-input'
 import type { JSX } from 'react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { ChevronLeft, ChevronRight, Plus, Trash2, Download, Upload, X } from 'lucide-react'
+import { RulesSelector } from '@/components/RulesSelector'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -66,6 +69,7 @@ interface TradeEntryForm {
   positionSize: string
   leverage: string
   link: string
+  selectedRules: string[]
 }
 
 export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Element {
@@ -86,6 +90,7 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
     positionSize: '',
     leverage: '',
     link: '',
+    selectedRules: [],
   })
   const today = new Date()
   const [currentDate, setCurrentDate] = useState(today)
@@ -156,6 +161,7 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
         positionSize: entry.positionSize?.toString() || '',
         leverage: entry.leverage?.toString() || '',
         link: entry.link || '',
+        selectedRules: entry.selectedRules || [],
       })
       setIsEditing(false)
       setIsViewMode(true)
@@ -173,6 +179,7 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
         positionSize: '',
         leverage: '',
         link: '',
+        selectedRules: [],
       })
       setIsEditing(false)
       setIsViewMode(false)
@@ -204,6 +211,7 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
         positionSize: entry.positionSize?.toString() || '',
         leverage: entry.leverage?.toString() || '',
         link: entry.link || '',
+        selectedRules: entry.selectedRules || [],
       })
       setIsViewMode(true)
       setIsEditing(false)
@@ -232,6 +240,7 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
       positionSize: '',
       leverage: '',
       link: '',
+      selectedRules: [],
     })
     setIsEditing(false)
     setIsViewMode(false)
@@ -512,6 +521,7 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
         positionSize: formData.positionSize ? parseFloat(formData.positionSize) : undefined,
         leverage: formData.leverage ? parseFloat(formData.leverage) : undefined,
         link: formData.link,
+        selectedRules: formData.selectedRules,
       }
 
       if (isEditing) {
@@ -584,6 +594,7 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
             positionSize: '',
             leverage: '',
             link: '',
+            selectedRules: [],
           })
           setIsEditing(false)
           setSelectedTradeIndex(0)
@@ -916,6 +927,16 @@ export function Calendar({ autoOpen = false }: { autoOpen?: boolean }): JSX.Elem
                   />
                 </div>
               </div>
+            </section>
+
+            {/* Rules Section */}
+            <section>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white border-b pb-0.5 mb-1">Trading Rules</h3>
+              <RulesSelector
+                selectedRules={formData.selectedRules}
+                onRulesChange={(ruleIds) => setFormData({ ...formData, selectedRules: ruleIds })}
+                className="mt-2"
+              />
             </section>
 
             {/* Images Section */}

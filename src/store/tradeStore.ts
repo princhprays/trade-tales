@@ -18,6 +18,7 @@ export interface TradeEntry {
   positionSize?: number
   leverage?: number
   link?: string
+  selectedRules?: string[]
 }
 
 interface Settings {
@@ -41,10 +42,20 @@ export interface CapitalEvent {
   note?: string;
 }
 
+export interface TradingRule {
+  id: string;
+  title: string;
+  description?: string;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface TradeStore {
   entries: TradeEntry[]
   settings: Settings
   capitalEvents: CapitalEvent[]
+  rules: TradingRule[]
   addEntry: (entry: Omit<TradeEntry, 'id'>) => void
   updateEntry: (id: string, entry: Partial<TradeEntry>) => void
   deleteEntry: (id: string) => void
@@ -57,6 +68,10 @@ interface TradeStore {
   addCapitalEvent: (event: Omit<CapitalEvent, 'id'>) => void
   updateCapitalEvent: (id: string, event: Partial<CapitalEvent>) => void
   deleteCapitalEvent: (id: string) => void
+  addRule: (rule: Omit<TradingRule, 'id' | 'createdAt' | 'updatedAt'>) => void
+  updateRule: (id: string, rule: Partial<TradingRule>) => void
+  deleteRule: (id: string) => void
+  toggleRulePin: (id: string) => void
 }
 
 export const useTradeStore = create<TradeStore>()(
@@ -72,6 +87,7 @@ export const useTradeStore = create<TradeStore>()(
         customSetups: [],
       },
       capitalEvents: [],
+      rules: [],
       addEntry: (entry) =>
         set((state) => ({
           entries: [
@@ -105,6 +121,7 @@ export const useTradeStore = create<TradeStore>()(
             customSetups: [],
           },
           capitalEvents: [],
+          rules: [],
         })),
       addCustomCoin: (coin) =>
         set((state) => ({
@@ -150,6 +167,29 @@ export const useTradeStore = create<TradeStore>()(
       deleteCapitalEvent: (id) =>
         set((state) => ({
           capitalEvents: state.capitalEvents.filter((e) => e.id !== id),
+        })),
+      addRule: (rule) =>
+        set((state) => ({
+          rules: [
+            ...state.rules,
+            { ...rule, id: crypto.randomUUID(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          ],
+        })),
+      updateRule: (id, rule) =>
+        set((state) => ({
+          rules: state.rules.map((r) =>
+            r.id === id ? { ...r, ...rule } : r
+          ),
+        })),
+      deleteRule: (id) =>
+        set((state) => ({
+          rules: state.rules.filter((r) => r.id !== id),
+        })),
+      toggleRulePin: (id) =>
+        set((state) => ({
+          rules: state.rules.map((r) =>
+            r.id === id ? { ...r, pinned: !r.pinned } : r
+          ),
         })),
     }),
     {

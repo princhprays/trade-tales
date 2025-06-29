@@ -7,12 +7,14 @@ import {
   Settings as SettingsIcon,
   Menu,
   ChevronLeft,
+  BookMarked,
 } from 'lucide-react';
 
 const navItems = [
   { label: 'Dashboard', icon: <LayoutDashboard size={20} />, value: 'dashboard' },
   { label: 'Calendar', icon: <Calendar size={20} />, value: 'calendar' },
   { label: 'Journal', icon: <BookOpen size={20} />, value: 'journal' },
+  { label: 'Rules', icon: <BookMarked size={20} />, value: 'rules' },
   { label: 'Analytics', icon: <BarChart2 size={20} />, value: 'analytics' },
   { label: 'Settings', icon: <SettingsIcon size={20} />, value: 'settings' },
 ];

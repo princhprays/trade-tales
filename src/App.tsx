@@ -3,6 +3,7 @@ import { Sidebar } from './components/ui/Sidebar'
 import { Dashboard } from './components/Dashboard'
 import { Calendar } from './components/Calendar'
 import { Journal } from './components/Journal'
+import { Rules } from './components/Rules'
 import { Analytics } from './components/Analytics'
 import { Settings } from './components/Settings'
 import { Toaster } from './components/ui/toaster'
@@ -37,6 +38,7 @@ function App() {
           {activePage === 'dashboard' && <Dashboard onNavigate={handlePageChange} />}
           {activePage === 'calendar' && <Calendar autoOpen={autoOpenCalendar} />}
           {activePage === 'journal' && <Journal onNavigate={handlePageChange} />}
+          {activePage === 'rules' && <Rules />}
           {activePage === 'analytics' && <Analytics />}
           {activePage === 'settings' && <Settings />}
         </main>
